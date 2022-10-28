@@ -10,27 +10,27 @@ dotenv:
 tasks:
   # SETTINGS / CONFIGURATION
   settings:
-    - 'python ./scripts/tasks/update-env.py --info'
+    - "python ./scripts/tasks/update-env.py --info"
   set-game-jak1:
-    - 'python ./scripts/tasks/update-env.py --game jak1'
+    - "python ./scripts/tasks/update-env.py --game jak1"
   set-game-jak2:
-    - 'python ./scripts/tasks/update-env.py --game jak2'
+    - "python ./scripts/tasks/update-env.py --game jak2"
   set-decomp-ntscv1:
     desc: "aka black label"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv1'
+      - "python ./scripts/tasks/update-env.py --decomp_config ntscv1"
   set-decomp-ntscv2:
     desc: "aka red label"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
+      - "python ./scripts/tasks/update-env.py --decomp_config ntscv2"
   set-decomp-pal:
     desc: "PAL region version"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+      - "python ./scripts/tasks/update-env.py --decomp_config pal"
   set-decomp-ntscjp:
     desc: "NTSC-J region version"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+      - "python ./scripts/tasks/update-env.py --decomp_config ntscjp"
   # GENERAL
   extract:
     desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
@@ -89,7 +89,7 @@ tasks:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
   decomp-file:
     cmds:
-      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --config-override ''{"allowed_objects": ["{{.FILE}}"]}'''
   decomp-clean:
     cmds:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
@@ -108,7 +108,7 @@ tasks:
   analyze-ee-memory:
     cmds:
       - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
-      - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
+      - "{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log"
   watch-pcsx2:
     # python -m pip install -U "watchdog[watchmedo]"
     cmds:
@@ -118,7 +118,7 @@ tasks:
   type-search:
     desc: Just an example to show it running
     cmds:
-      - "{{.TYPESEARCH_BIN_RELEASE_DIR}}/type_searcher --output-path ./search-results.json --game {{.GAME}} --fields '[{\"type\":\"int16\",\"offset\":2},{\"type\":\"int16\",\"offset\":4}]'"
+      - '{{.TYPESEARCH_BIN_RELEASE_DIR}}/type_searcher --output-path ./search-results.json --game {{.GAME}} --fields ''[{"type":"int16","offset":2},{"type":"int16","offset":4}]'''
   # TESTS
   offline-tests: # ran by jenkins
     cmds:
