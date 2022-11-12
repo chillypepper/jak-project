@@ -1,0 +1,41 @@
+# Start from the title option of the debug menu
+4,X
+190
+# New game
+4,X
+190
+# Select first slot
+4,X
+190
+# Start new game
+4,Left
+4,X
+# Wait for the portal
+500
+14,leftx=120,lefty=0
+40,L1
+60,X
+160
+40,L1,leftx=170,lefty=0
+60,X
+160
+40,L1,leftx=130,lefty=0
+60,X
+120
+70,X
+40,Circle
+# Land on first ledge
+110,leftx=120,lefty=0
+40,L1
+60,X
+160
+10,leftx=160,lefty=0
+40,L1
+60,X
+160
+40,L1,leftx=220,lefty=0
+60,X
+160
+# Pick up first cell
+1660
+40,Circle

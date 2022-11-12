@@ -1,5 +1,9 @@
 #include "kmachine.h"
 
+#include <numeric>
+#include <sstream>
+#include <string>
+
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -37,6 +41,163 @@ u32 vblank_interrupt_handler = 0;
 
 Timer ee_clock_timer;
 
+bool is_tas_running;
+u64 frame_id;
+std::ifstream frame_input_file;
+
+// I am also Not crazy about this declaration
+const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
+                                                           {"L3", Pad::Button::L3},
+                                                           {"R3", Pad::Button::R3},
+                                                           {"Start", Pad::Button::Start},
+                                                           {"Up", Pad::Button::Up},
+                                                           {"Right", Pad::Button::Right},
+                                                           {"Down", Pad::Button::Down},
+                                                           {"Left", Pad::Button::Left},
+                                                           {"L2", Pad::Button::L2},
+                                                           {"R2", Pad::Button::R2},
+                                                           {"L1", Pad::Button::L1},
+                                                           {"R1", Pad::Button::R1},
+                                                           {"Triangle", Pad::Button::Triangle},
+                                                           {"Circle", Pad::Button::Circle},
+                                                           {"X", Pad::Button::X},
+                                                           {"Square", Pad::Button::Square}};
+
+struct FrameInputs {
+  uint64_t start_frame;
+  uint64_t end_frame;
+  u16 button0;
+  u8 leftx;
+  u8 lefty;
+  u8 rightx;
+  u8 righty;
+
+  // Quick debug output just to make sure things look right
+  std::string toString() {
+    return "@" + std::string("\"start_frame\": \"") + std::to_string(start_frame) + "\"," +
+           std::string("\"end_frame\": \"") + std::to_string(end_frame) + "\"," +
+           std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
+           std::string("\"leftx\": \"") + std::to_string(leftx) + "\"," +
+           std::string("\"lefty\": \"") + std::to_string(lefty) + "\"," +
+           std::string("\"rightx\": \"") + std::to_string(rightx) + "\"," +
+           std::string("\"righty\": \"") + std::to_string(righty) + "\"," + "@";
+  }
+};
+
+std::vector<FrameInputs> frame_inputs;
+
+void load_tas_inputs() {
+  frame_inputs.clear();
+  frame_input_file.clear();
+  frame_input_file.open("./tas/jak1_inputs.txt");
+
+  // First load the file contents, we'll be reading line by line
+  if (frame_input_file.is_open()) {
+    std::string line;
+
+    // Read each line in the file
+    while (std::getline(frame_input_file, line)) {
+      // Remove all whitespace from the line
+      line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+
+      // Ignore comments
+      if (line._Starts_with("#")) {
+        continue;
+      }
+
+      std::stringstream line_stream(line);
+      std::string value;
+      uint16_t index = 0;
+      FrameInputs input;
+
+      // Set defaults for the first frame, and carry existing positions for the next
+      if (frame_inputs.size() == 0) {
+        input.start_frame = 0;
+        input.leftx = 128;
+        input.lefty = 128;
+        input.rightx = 128;
+        input.righty = 128;
+      } else {
+        size_t lastIndex = frame_inputs.size() - 1;
+        input.start_frame = frame_inputs[lastIndex].end_frame + 1;
+        input.leftx = frame_inputs[lastIndex].leftx;
+        input.lefty = frame_inputs[lastIndex].lefty;
+        input.rightx = frame_inputs[lastIndex].rightx;
+        input.righty = frame_inputs[lastIndex].righty;
+      }
+
+      input.button0 = 0;
+
+      // Break the line apart by the separator
+      while (std::getline(line_stream, value, ',')) {
+        if (index == 0) {
+          uint16_t frame_count = std::stoi(value);
+
+          // TODO This is a quick catch for empty/invalid lines, stoi seems to return -1 and we
+          // don't care about empties
+          if (frame_count > 0) {
+            input.end_frame = input.start_frame + std::stoi(value);
+          } else {
+            input.end_frame = 0;
+            break;
+          }
+        } else {
+          // Match buttons by their names
+          for (auto button : gamepad_map) {
+            if (button.first == value) {
+              input.button0 += std::pow(2, static_cast<int>(button.second));
+              break;
+            }
+          }
+
+          // Get the stick positions, if there are multiple we just take the latest
+          if (value._Starts_with("leftx=")) {
+            uint16_t position = std::stoi(value.substr(std::string("leftx=").size()));
+
+            if (position >= 0 && position <= 255) {
+              input.leftx = position;
+            }
+          } else if (value._Starts_with("lefty=")) {
+            uint16_t position = std::stoi(value.substr(std::string("lefty=").size()));
+
+            if (position >= 0 && position <= 255) {
+              input.lefty = position;
+            }
+          } else if (value._Starts_with("rightx=")) {
+            uint16_t position = std::stoi(value.substr(std::string("rightx=").size()));
+
+            if (position >= 0 && position <= 255) {
+              input.rightx = position;
+            }
+          } else if (value._Starts_with("righty=")) {
+            uint16_t position = std::stoi(value.substr(std::string("righty=").size()));
+
+            if (position >= 0 && position <= 255) {
+              input.righty = position;
+            }
+          }
+        }
+
+        index += 1;
+      }
+
+      if (input.end_frame != 0) {
+        frame_inputs.push_back(input);
+      }
+    }
+
+    std::string frame_display;
+    for (auto& piece : frame_inputs)
+      frame_display += piece.toString() + ", ";
+
+    lg::debug("FRAMES LOADED: " + frame_display);
+
+    frame_input_file.close();
+  } else {
+    lg::debug("Failed to open inputs.");
+  }
+}
+
 void kmachine_init_globals_common() {
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
@@ -45,6 +206,8 @@ void kmachine_init_globals_common() {
   vif1_interrupt_handler = 0;
   vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
+  is_tas_running = false;
+  frame_id = 0;
 }
 
 /*!
@@ -120,6 +283,40 @@ u64 CPadGetData(u64 cpad_info) {
           scePadSetActDirect(cpad->number, 0, cpad->direct);
         }
         cpad->valid = pad_state;
+
+        // If you hit right, start the tas
+        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Right)) && !is_tas_running) {
+          is_tas_running = true;
+          load_tas_inputs();
+        }
+
+        // If you hit left, end/reset the tas
+        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Left))) {
+          is_tas_running = false;
+          frame_id = 0;
+        }
+
+        // If the tas is enabled take control over all the buttons until you press left again
+        if (is_tas_running) {
+          cpad->button0 = 0;
+          cpad->leftx = 128;
+          cpad->lefty = 128;
+          cpad->rightx = 128;
+          cpad->righty = 128;
+
+          for (auto input : frame_inputs) {
+            if (input.end_frame >= frame_id) {
+              cpad->button0 |= input.button0;
+              cpad->leftx = input.leftx;
+              cpad->lefty = input.lefty;
+              cpad->rightx = input.rightx;
+              cpad->righty = input.righty;
+              break;
+            }
+          }
+
+          frame_id += 1;
+        }
       }
       break;
     case 0:  // unavailable
