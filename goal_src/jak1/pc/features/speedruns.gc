@@ -21,6 +21,8 @@
   (set! (-> *pc-settings* force-actors?) #f)
   ;; force FPS to `60`
   (set-frame-rate! *pc-settings* 60)
+  ;; reset the seed for consistent rng
+  (rand-vu-init 1.418091058731079)
   ;; skip intro cutscene
   (close-specific-task! (game-task intro) (task-status need-resolution))
   ;; enable auto saving by default

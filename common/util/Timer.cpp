@@ -36,21 +36,25 @@ int Timer::clock_gettime_monotonic(struct timespec* tv) const {
 }
 #endif
 
-void Timer::start() {
+void Timer::clock_get_platform_timer(struct timespec* tv) const {
 #ifdef __linux__
-  clock_gettime(CLOCK_MONOTONIC, &_startTime);
+  clock_gettime(CLOCK_MONOTONIC, tv);
 #elif _WIN32
-  clock_gettime_monotonic(&_startTime);
+  clock_gettime_monotonic(tv);
 #endif
 }
 
+void Timer::start(bool is_tas_timer) {
+  _is_tas_timer = is_tas_timer;
+  clock_get_platform_timer(&_startTime);
+}
+
 int64_t Timer::getNs() const {
-  struct timespec now = {};
-#ifdef __linux__
-  clock_gettime(CLOCK_MONOTONIC, &now);
-#elif _WIN32
-  clock_gettime_monotonic(&now);
-#endif
-  return (int64_t)(now.tv_nsec - _startTime.tv_nsec) +
-         1000000000 * (now.tv_sec - _startTime.tv_sec);
+  if (_is_tas_timer) {
+    return 17000000;  // 0.017 seconds, 1/60th of a second
+  } else {
+    struct timespec now = {};
+    clock_get_platform_timer(&now);
+    return (int64_t)(now.tv_nsec - _startTime.tv_nsec) + 1.e9 * (now.tv_sec - _startTime.tv_sec);
+  }
 }

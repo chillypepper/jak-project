@@ -37,7 +37,7 @@ void FrameLimiter::run(double target_fps,
     remaining_time = target_seconds - m_timer.getSeconds();
   }
 
-  m_timer.start();
+  m_timer.start(false);
 }
 
 #else
@@ -73,7 +73,7 @@ void FrameLimiter::run(double target_fps,
     remaining_time = target_seconds - m_timer.getSeconds();
   }
 
-  m_timer.start();
+  m_timer.start(false);
 }
 
 #endif

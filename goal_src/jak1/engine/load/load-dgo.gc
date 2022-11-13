@@ -292,7 +292,7 @@ struct DgoHeader {
     )
   )
 
-(defun dgo-load-get-next ((last-object (pointer symbol)))
+(defun dgo-load-get-next-wrapped ((last-object (pointer symbol)))
   "Check if the currently loading object is done.
    Will set the last-object flag depending on if there is more.
    Returns #f if it hasn't loaded yet and the address otherwise"
@@ -329,6 +329,16 @@ struct DgoHeader {
         )
       )
     load-location
+    )
+  )
+
+(defun dgo-load-get-next ((last-object (pointer symbol)))
+  "Wait for loading to finish, then return. Always succeeds"
+  (let ((result (dgo-load-get-next-wrapped last-object)))
+    (while (not result)
+      (set! result (dgo-load-get-next-wrapped last-object))
+      )
+    result
     )
   )
 
