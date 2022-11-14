@@ -143,6 +143,7 @@ bool Tfrag3::setup_for_level(const std::vector<tfrag3::TFragmentTreeKind>& tree_
                              SharedRenderState* render_state) {
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
+  tfrag3_setup_timer.start(false);
   auto lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;

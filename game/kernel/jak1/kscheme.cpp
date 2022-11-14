@@ -1405,6 +1405,7 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
  */
 s32 InitHeapAndSymbol() {
   Timer heap_init_timer;
+  heap_init_timer.start(false);
   // reset all mips2c functions
   Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table

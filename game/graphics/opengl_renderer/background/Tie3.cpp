@@ -149,6 +149,7 @@ void Tie3::update_load(const LevelData* loader_data) {
 bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_state) {
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
+  tfrag3_setup_timer.start(false);
   auto lev_data = render_state->loader->get_tfrag3_level(level);
   if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
     m_has_level = false;

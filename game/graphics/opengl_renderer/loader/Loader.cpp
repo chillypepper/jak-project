@@ -118,17 +118,20 @@ void Loader::loader_thread() {
 
     // load the fr3 file
     Timer disk_timer;
+    disk_timer.start(false);
     auto data =
         file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
     double disk_load_time = disk_timer.getSeconds();
 
     // the FR3 files are compressed
     Timer decomp_timer;
+    decomp_timer.start(false);
     auto decomp_data = compression::decompress_zstd(data.data(), data.size());
     double decomp_time = decomp_timer.getSeconds();
 
     // Read back into the tfrag3::Level structure
     Timer import_timer;
+    import_timer.start(false);
     auto result = std::make_unique<tfrag3::Level>();
     Serializer ser(decomp_data.data(), decomp_data.size());
     result->serialize(ser);
@@ -136,6 +139,7 @@ void Loader::loader_thread() {
 
     // and finally "unpack", which creates the vertex data we'll upload to the GPU
     Timer unpack_timer;
+    unpack_timer.start(false);
     for (auto& tie_tree : result->tie_trees) {
       for (auto& tree : tie_tree) {
         tree.unpack();
@@ -275,6 +279,7 @@ void Loader::update_blocking(TexturePool& tex_pool) {
 
 void Loader::update(TexturePool& texture_pool) {
   Timer loader_timer;
+  loader_timer.start(false);
 
   // only main thread can touch this.
   for (auto& lev : m_loaded_tfrag3_levels) {
@@ -308,6 +313,7 @@ void Loader::update(TexturePool& texture_pool) {
       for (auto& stage : m_loader_stages) {
         auto evt = scoped_prof(fmt::format("stage-{}", stage->name()).c_str());
         Timer stage_timer;
+        stage_timer.start(false);
         done = stage->run(loader_timer, loader_input);
         if (stage_timer.getMs() > 5.f) {
           fmt::print("stage {} took {:.2f} ms\n", stage->name(), stage_timer.getMs());
@@ -334,6 +340,7 @@ void Loader::update(TexturePool& texture_pool) {
     auto evt = scoped_prof("gpu-unload");
     // try to remove levels.
     Timer unload_timer;
+    unload_timer.start(false);
     if ((int)m_loaded_tfrag3_levels.size() >= m_max_levels) {
       for (auto& lev : m_loaded_tfrag3_levels) {
         if (lev.second->frames_since_last_used > 180) {
