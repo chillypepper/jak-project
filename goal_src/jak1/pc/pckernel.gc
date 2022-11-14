@@ -103,6 +103,10 @@
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
   (case rate
+    ((rate)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) 'ntsc)
+      )
     ((50)
       (set! (-> obj target-fps) rate)
       (set! (-> *setting-control* default video-mode) 'pal)
@@ -140,6 +144,11 @@
   (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
+
+  (let ((pc-frame-rate (pc-get-frame-rate)))
+    (if (!= (-> obj target-fps) pc-frame-rate)
+      (set-frame-rate! obj (pc-get-frame-rate))
+      ))
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -1178,7 +1187,3 @@
 
 ;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
 (define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) '*pc-dead-pool*))
-
-
-
-

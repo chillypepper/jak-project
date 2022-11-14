@@ -83,11 +83,23 @@ struct FrameInputs {
            std::string("\"righty\": \"") + std::to_string(righty) + "\"," + "@";
   }
 };
+struct FrameCommands {
+  uint64_t frame_index;
+  s64 frame_rate;
+
+  // Quick debug output just to make sure things look right
+  std::string toString() {
+    return "@" + std::string("\"frame_index\": \"") + std::to_string(frame_index) + "\"," +
+           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," + "@";
+  }
+};
 
 std::vector<FrameInputs> frame_inputs;
+std::vector<FrameCommands> frame_commands;
 
 void load_tas_inputs() {
   frame_inputs.clear();
+  frame_commands.clear();
   frame_input_file.clear();
   frame_input_file.open("./tas/jak1_inputs.txt");
 
@@ -100,8 +112,8 @@ void load_tas_inputs() {
       // Remove all whitespace from the line
       line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
 
-      // Ignore comments
-      if (line._Starts_with("#")) {
+      // Ignore comments and empty lines
+      if (line.size() == 0 || line._Starts_with("#")) {
         continue;
       }
 
@@ -109,6 +121,36 @@ void load_tas_inputs() {
       std::string value;
       uint16_t index = 0;
       FrameInputs input;
+      FrameCommands command;
+
+      if (line._Starts_with("commands")) {
+        command.frame_index =
+            frame_inputs.size() == 0 ? 0 : frame_inputs[frame_inputs.size() - 1].end_frame + 1;
+
+        // Set defaults for the first frame, and carry existing positions for the next
+        if (frame_commands.size() == 0) {
+          command.frame_rate = 60;
+        } else {
+          size_t lastIndex = frame_commands.size() - 1;
+          command.frame_rate = frame_commands[lastIndex].frame_rate;
+        }
+
+        // Break the line apart by the separator
+        while (std::getline(line_stream, value, ',')) {
+          // Update the current frame rate, if there are multiple we just take the latest
+          if (value._Starts_with("framerate=")) {
+            s64 frame_rate = std::stoi(value.substr(std::string("framerate=").size()));
+
+            if (frame_rate >= 0) {
+              command.frame_rate = frame_rate;
+            }
+          }
+        }
+
+        frame_commands.push_back(command);
+
+        continue;
+      }
 
       // Set defaults for the first frame, and carry existing positions for the next
       if (frame_inputs.size() == 0) {
@@ -186,11 +228,15 @@ void load_tas_inputs() {
       }
     }
 
-    std::string frame_display;
-    for (auto& piece : frame_inputs)
-      frame_display += piece.toString() + ", ";
+    // std::string frame_commands_display;
+    // for (auto& piece : frame_commands)
+    //   frame_commands_display += piece.toString() + ", ";
+    // lg::debug("TAS COMMANDS: " + frame_commands_display);
 
-    lg::debug("FRAMES LOADED: " + frame_display);
+    // std::string frame_inputs_display;
+    // for (auto& piece : frame_inputs)
+    //   frame_inputs_display += piece.toString() + ", ";
+    // lg::debug("TAS INPUTS: " + frame_inputs_display);
 
     frame_input_file.close();
   } else {
@@ -291,9 +337,10 @@ u64 CPadGetData(u64 cpad_info) {
         }
 
         // If you hit left, end/reset the tas
-        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Left))) {
+        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Left)) && is_tas_running) {
           is_tas_running = false;
           frame_id = 0;
+          set_frame_rate(60);
         }
 
         // If the tas is enabled take control over all the buttons until you press left again
@@ -303,6 +350,13 @@ u64 CPadGetData(u64 cpad_info) {
           cpad->lefty = 128;
           cpad->rightx = 128;
           cpad->righty = 128;
+
+          for (auto command : frame_commands) {
+            if (command.frame_index == frame_id) {
+              set_frame_rate(command.frame_rate);
+              break;
+            }
+          }
 
           for (auto input : frame_inputs) {
             if (input.end_frame >= frame_id) {
@@ -314,6 +368,8 @@ u64 CPadGetData(u64 cpad_info) {
               break;
             }
           }
+
+          lg::debug("Running frame: " + std::to_string(frame_id));
 
           frame_id += 1;
         }

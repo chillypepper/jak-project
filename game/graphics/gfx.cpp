@@ -384,6 +384,10 @@ void get_window_scale(float* x, float* y) {
   }
 }
 
+s64 get_frame_rate() {
+  return g_global_settings.target_fps;
+}
+
 GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->fullscreen_mode();

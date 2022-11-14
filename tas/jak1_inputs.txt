@@ -1,41 +1,87 @@
+# # Quit to main menu
+# commands,framerate=999
+# 1,Start
+# 201
+# 1,Circle
+# 301
+# 1,Up
+# 5
+# 1,Up
+# 5
+# 1,X
+# 100
+# 1,Left
+# 5
+# # TODO Back to 60 before main menu
+# commands,framerate=60
+# 1,X
+# 
+# # TODO Wait In the main menu
+# 2000
+# commands,framerate=999
+# 2,Start
+# 201
+# 1,X
+# 301
+# 1,X
+# 201
+# 1,Left
+# 5
+# # TODO Back to 60 before new game
+# commands,framerate=60
+# 1,X
+# 
+# # TODO Wait for portal
+# 62
+# commands,framerate=999
+# 586
+
 # Start from the title option of the debug menu
-4,X
-190
-# New game
-4,X
-190
-# Select first slot
-4,X
-190
-# Start new game
-4,Left
-4,X
-# Wait for the portal
-500
-14,leftx=120,lefty=0
-40,L1
-60,X
+commands,framerate=999
+1,R3
+1
+1,X
+201
+1,X
+200
+1,X
+201
+1,Left
+5
+# TODO Back to 60 before new game
+commands,framerate=60
+1,X
+
+# TODO Wait for portal
+62
+commands,framerate=999
+438
+
+13,leftx=140,lefty=0
+10,L1
+10,X
+222
+10,L1
+10,X
+237
+10,L1
+10,X
+214
+
+# Launch up to first ledge
+25,X,leftx=116,lefty=0
+133
+12,leftx=132,lefty=0
+10,L1
+10,X
+230
+13,leftx=150,lefty=0
+10,L1
+10,X
+230,leftx=184,lefty=0
+10,L1
+10,X
 160
-40,L1,leftx=170,lefty=0
-60,X
-160
-40,L1,leftx=130,lefty=0
-60,X
-120
-70,X
-40,Circle
-# Land on first ledge
-110,leftx=120,lefty=0
-40,L1
-60,X
-160
-10,leftx=160,lefty=0
-40,L1
-60,X
-160
-40,L1,leftx=220,lefty=0
-60,X
-160
-# Pick up first cell
-1660
-40,Circle
+# TODO Back to 60 before power cell
+commands,framerate=60
+1740

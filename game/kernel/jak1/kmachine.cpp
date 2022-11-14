@@ -557,6 +557,10 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+s64 get_frame_rate() {
+  return Gfx::get_frame_rate();
+}
+
 u32 get_fullscreen() {
   switch (Gfx::get_fullscreen()) {
     default:
@@ -611,6 +615,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
+  make_function_symbol_from_c("pc-get-frame-rate", (void*)get_frame_rate);
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
