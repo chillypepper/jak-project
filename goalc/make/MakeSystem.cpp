@@ -84,6 +84,7 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
  */
 void MakeSystem::load_project_file(const std::string& file_path) {
   Timer timer;
+  timer.start(false);
   // clear the previous project
   clear_project();
   // read the file
@@ -251,6 +252,7 @@ void MakeSystem::get_dependencies(const std::string& master_target,
 
 std::vector<std::string> MakeSystem::get_dependencies(const std::string& target) const {
   Timer timer;
+  timer.start(false);
 
   std::vector<std::string> result;
   std::unordered_set<std::string> added_deps;
@@ -270,6 +272,7 @@ void MakeSystem::add_tool(std::shared_ptr<Tool> tool) {
 
 std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::string>& all_deps) {
   Timer timer;
+  timer.start(false);
   std::vector<std::string> result;
   std::unordered_set<std::string> stale_deps;
 
@@ -353,10 +356,12 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
   //  }
 
   Timer make_timer;
+  make_timer.start(false);
   lg::print("Building {} targets...\n", deps.size());
   int i = 0;
   for (auto& to_make : deps) {
     Timer step_timer;
+    step_timer.start(false);
     auto& rule = m_output_to_step.at(to_make);
     auto& tool = m_tools.at(rule->tool);
     int percent = (100.0 * (1 + (i++)) / (deps.size())) + 0.5;
