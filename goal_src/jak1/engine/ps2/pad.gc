@@ -281,7 +281,10 @@
     (dotimes (pad-idx (-> pad-list num-cpads))
       (let ((pad (-> *cpad-list* cpads pad-idx)))
         ;; read from hardware.
-        (cpad-get-data pad)
+        ;; TODO We only do this when a cutscene isn't playing to get accurate frame timings for the TAS
+        (if (not (-> *pc-settings* movie?))
+          (cpad-get-data pad)
+          )
         (cond
           ((zero? (logand (-> pad valid) 128))
            (dotimes (buzz-idx 2)
@@ -446,4 +449,3 @@
       (sound-play "cursor-options")
       )
   )
-

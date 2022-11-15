@@ -12,13 +12,10 @@
 # 100
 # 1,Left
 # 5
-# # TODO Back to 60 before main menu
-# commands,framerate=60
 # 1,X
 # 
-# # TODO Wait In the main menu
-# 2000
-# commands,framerate=999
+# # Wait for the title logo screen to load
+# 396
 # 2,Start
 # 201
 # 1,X
@@ -27,16 +24,15 @@
 # 201
 # 1,Left
 # 5
-# # TODO Back to 60 before new game
-# commands,framerate=60
 # 1,X
 # 
-# # TODO Wait for portal
+# # NOTE This is a special wait when starting a new game, will reset the fps to 60 due to speedrun.gc config
 # 62
+# Start all game commands etc after this point
 # commands,framerate=999
 # 586
 
-# Start from the title option of the debug menu
+# This assumes you've navigated to "Other ... > Progress ... > title" in the debug menu, and then closed the debug menu, while in Geyser Rock
 commands,framerate=999
 1,R3
 1
@@ -48,12 +44,11 @@ commands,framerate=999
 201
 1,Left
 5
-# TODO Back to 60 before new game
-commands,framerate=60
 1,X
 
-# TODO Wait for portal
+# NOTE This is a special wait when starting a new game, will reset the fps to 60 due to speedrun.gc config
 62
+# Start all game commands etc after this point
 commands,framerate=999
 438
 
