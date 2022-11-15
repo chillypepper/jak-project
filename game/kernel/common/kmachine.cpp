@@ -41,9 +41,9 @@ u32 vblank_interrupt_handler = 0;
 
 Timer ee_clock_timer;
 
-bool is_tas_running;
-u64 frame_id;
-std::ifstream frame_input_file;
+const std::string frame_inputs_folder_path = "tas/jak1/";
+const std::string frame_inputs_file_extension = ".jaktas";
+u64 tas_frame;
 
 // I am also Not crazy about this declaration
 const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
@@ -97,11 +97,17 @@ struct FrameCommands {
 std::vector<FrameInputs> frame_inputs;
 std::vector<FrameCommands> frame_commands;
 
-void load_tas_inputs() {
-  frame_inputs.clear();
-  frame_commands.clear();
+// TODO This shouldn't be adding to a global var, should just import and return
+void load_tas_inputs(std::string file_name = "") {
+  if (file_name.size() == 0) {
+    frame_inputs.clear();
+    frame_commands.clear();
+  }
+
+  std::ifstream frame_input_file;
   frame_input_file.clear();
-  frame_input_file.open("./tas/jak1_inputs.txt");
+  frame_input_file.open(frame_inputs_folder_path + (file_name.size() == 0 ? "main" : file_name) +
+                        frame_inputs_file_extension);
 
   // First load the file contents, we'll be reading line by line
   if (frame_input_file.is_open()) {
@@ -123,9 +129,24 @@ void load_tas_inputs() {
       FrameInputs input;
       FrameCommands command;
 
+      // Import another tas file, and just read it in like it was originally part of this file
+      // TODO Some protection against cyclical imports maybe?
+      if (line._Starts_with("import=")) {
+        std::string import = line.substr(std::string("import=").size());
+
+        // TODO Some protection against file walking
+        if (import.size() > 0) {
+          load_tas_inputs(import);
+        }
+
+        continue;
+      }
+
+      // TODO Multiple command lines in a row will result in all but the first being ignored, as we
+      // just look for the first command match with our current frame
       if (line._Starts_with("commands")) {
         command.frame_index =
-            frame_inputs.size() == 0 ? 0 : frame_inputs[frame_inputs.size() - 1].end_frame + 1;
+            frame_inputs.size() == 0 ? 1 : frame_inputs[frame_inputs.size() - 1].end_frame + 1;
 
         // Set defaults for the first frame, and carry existing positions for the next
         if (frame_commands.size() == 0) {
@@ -154,7 +175,8 @@ void load_tas_inputs() {
 
       // Set defaults for the first frame, and carry existing positions for the next
       if (frame_inputs.size() == 0) {
-        input.start_frame = 0;
+        input.start_frame = 1;
+        input.end_frame = 0;
         input.leftx = 128;
         input.lefty = 128;
         input.rightx = 128;
@@ -162,6 +184,7 @@ void load_tas_inputs() {
       } else {
         size_t lastIndex = frame_inputs.size() - 1;
         input.start_frame = frame_inputs[lastIndex].end_frame + 1;
+        input.end_frame = 0;
         input.leftx = frame_inputs[lastIndex].leftx;
         input.lefty = frame_inputs[lastIndex].lefty;
         input.rightx = frame_inputs[lastIndex].rightx;
@@ -176,11 +199,10 @@ void load_tas_inputs() {
           uint16_t frame_count = std::stoi(value);
 
           // TODO This is a quick catch for empty/invalid lines, stoi seems to return -1 and we
-          // don't care about empties
+          // don't want to run inputs for zero frames (but they might be there during testing)
           if (frame_count > 0) {
-            input.end_frame = input.start_frame + std::stoi(value);
+            input.end_frame = input.start_frame + frame_count - 1;
           } else {
-            input.end_frame = 0;
             break;
           }
         } else {
@@ -223,7 +245,7 @@ void load_tas_inputs() {
         index += 1;
       }
 
-      if (input.end_frame != 0) {
+      if (input.end_frame > 0) {
         frame_inputs.push_back(input);
       }
     }
@@ -240,7 +262,16 @@ void load_tas_inputs() {
 
     frame_input_file.close();
   } else {
-    lg::debug("Failed to open inputs.");
+    lg::debug("Failed to open inputs. " +
+              (file_name.size() == 0
+                   ? "Make sure to create a main" + frame_inputs_file_extension +
+                         " file in \"jak-project/" + frame_inputs_folder_path +
+                         "\" to get started! You can just copy one of the existing " +
+                         frame_inputs_file_extension +
+                         " files "
+                         "to test it."
+                   : "File " + file_name + frame_inputs_file_extension + " not found in " +
+                         frame_inputs_folder_path));
   }
 }
 
@@ -252,8 +283,7 @@ void kmachine_init_globals_common() {
   vif1_interrupt_handler = 0;
   vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
-  is_tas_running = false;
-  frame_id = 0;
+  tas_frame = 0;
 }
 
 /*!
@@ -330,21 +360,22 @@ u64 CPadGetData(u64 cpad_info) {
         }
         cpad->valid = pad_state;
 
-        // If you hit right, start the tas
-        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Right)) && !is_tas_running) {
-          is_tas_running = true;
+        // Use L3 to enable the TAS. This isn't a toggle to avoid multi frame button presses
+        if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3))) {
+          lg::debug("Starting TAS ...");
+          tas_frame = 1;
           load_tas_inputs();
         }
 
-        // If you hit left, end/reset the tas
-        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Left)) && is_tas_running) {
-          is_tas_running = false;
-          frame_id = 0;
+        // Use Square to disable the TAS. This isn't a toggle to avoid multi frame button presses
+        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Square)) && tas_frame > 0) {
+          lg::debug("Ending TAS");
+          tas_frame = 0;
           set_frame_rate(60);
         }
 
         // If the tas is enabled take control over all the buttons until you press left again
-        if (is_tas_running) {
+        if (tas_frame > 0) {
           cpad->button0 = 0;
           cpad->leftx = 128;
           cpad->lefty = 128;
@@ -352,26 +383,30 @@ u64 CPadGetData(u64 cpad_info) {
           cpad->righty = 128;
 
           for (auto command : frame_commands) {
-            if (command.frame_index == frame_id) {
-              set_frame_rate(command.frame_rate);
+            if (tas_frame == command.frame_index) {
+              if (Gfx::get_frame_rate() != command.frame_rate) {
+                set_frame_rate(command.frame_rate);
+              }
+
               break;
             }
           }
 
           for (auto input : frame_inputs) {
-            if (input.end_frame >= frame_id) {
-              cpad->button0 |= input.button0;
+            if (tas_frame <= input.end_frame) {
+              cpad->button0 = input.button0;
               cpad->leftx = input.leftx;
               cpad->lefty = input.lefty;
               cpad->rightx = input.rightx;
               cpad->righty = input.righty;
+
               break;
             }
           }
 
-          lg::debug("Running frame: " + std::to_string(frame_id));
+          // lg::debug("Running frame: " + std::to_string(tas_frame));
 
-          frame_id += 1;
+          tas_frame += 1;
         }
       }
       break;

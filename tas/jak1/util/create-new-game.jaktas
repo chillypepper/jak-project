@@ -1,0 +1,14 @@
+# Assumes we're running from the title/logo screen
+1,Start
+203
+1,X
+303
+1,X
+203
+1,Left
+7
+1,X
+
+# NOTE This is a special 63 frame wait when starting a new game, during this time fps will be reset
+# to 60 due to speedruns.gc config (among other things). Safe to use inputs and commands after this
+63

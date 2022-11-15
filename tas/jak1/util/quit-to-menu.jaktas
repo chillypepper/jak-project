@@ -1,0 +1,17 @@
+# Quit to main menu
+1,Start
+203
+1,Circle
+303
+1,Up
+7
+1,Up
+7
+1,X
+103
+1,Left
+7
+1,X
+# Wait for the title/logo screen to load. Generally keep this at the highest known frame time for safety.
+# Lowest known quit frames: 399 (Geyser). Lowest known quit frames: 699 (Citadel entrance)
+699
