@@ -1,5 +1,6 @@
 # Wait after exiting portal before inputs work again
-588
+commands,frame-rate=999,skip-spool-movies=true
+581
 
 # First inputs after portal
 13,leftx=88,lefty=0

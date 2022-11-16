@@ -1,3 +1,2 @@
-import=util/quit-to-menu
 import=util/create-new-game
 import=no-lts-geyser-rock

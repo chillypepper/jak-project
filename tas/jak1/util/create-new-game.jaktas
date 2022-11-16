@@ -9,6 +9,7 @@
 7
 1,X
 
-# NOTE This is a special 63 frame wait when starting a new game, during this time fps will be reset
-# to 60 due to speedruns.gc config (among other things). Safe to use inputs and commands after this
-63
+# NOTE This is a special wait when starting a new game, during this time fps will be reset to 60 due
+# to speedruns.gc config (among other things). Safe to use inputs and commands after this
+# TODO I have seen cases of this not being enough of a buffer, may need to be increased
+70

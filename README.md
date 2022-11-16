@@ -4,440 +4,163 @@
 
 <p align="center">
   <a href="https://opengoal.dev/docs/intro" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
-  <a target="_blank" rel="noopener noreferrer" href="https://github.com/open-goal/jak-project/workflows/Build/badge.svg"><img src="https://github.com/open-goal/jak-project/workflows/Build/badge.svg" alt="Linux and Windows Build" style="max-width:100%;"></a>
-  <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&utm_medium=referral&utm_content=open-goal/jak-project&utm_campaign=Badge_Coverage" rel="nofollow"><img src="https://app.codacy.com/project/badge/Coverage/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
-  <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=open-goal/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://discord.gg/VZbXMHXzWv"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
-- [Please read first](#please-read-first)
-  - [Quick Start](#quick-start)
-- [Project Description](#project-description)
-  - [Current Status](#current-status)
-  - [Methodology](#methodology)
-- [Setting up a Development Environment](#setting-up-a-development-environment)
-  - [Docker](#docker)
-  - [Linux](#linux)
-    - [Ubuntu (20.04)](#ubuntu-2004)
-    - [Arch](#arch)
-    - [Fedora](#fedora)
-  - [Windows](#windows)
-    - [Required Software](#required-software)
-    - [Using Visual Studio](#using-visual-studio)
-  - [Building and Running the Game](#building-and-running-the-game)
-    - [Extract Assets](#extract-assets)
-    - [Build the Game](#build-the-game)
-    - [Run the Game](#run-the-game)
-      - [Connecting the REPL to the Game](#connecting-the-repl-to-the-game)
-      - [Running the Game Without Auto-Booting](#running-the-game-without-auto-booting)
-    - [Interacting with the Game](#interacting-with-the-game)
-- [Technical Project Overview](#technical-project-overview)
-  - [`goalc`](#goalc)
-    - [Running the compiler](#running-the-compiler)
-  - [`decompiler`](#decompiler)
-    - [Running the decompiler](#running-the-decompiler)
-  - [`goal_src/`](#goal_src)
-  - [`game` runtime](#game-runtime)
+# BEFORE YOU BEGIN
 
-## Please read first
+Please note this is not the main OpenGOAL repository! I'm currently working on creating a TAS (Tool Assisted Speedrun) for Jak and Daxter here, and if that's what you're looking for you've come to the right place.
 
-Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
+If however you're looking for OpenGOAL itself, please start either on the main OpenGOAL site (https://opengoal.dev/), or on the main GitHub page (https://github.com/open-goal/jak-project).
 
-For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
+From this point on I'm assuming you're already using OpenGOAL and are interested in contributing to the TAS!
 
-Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website: https://opengoal.dev
+I'm planning to work mostly in the `TAS` channel in the Jak Speedruns discord (https://discord.com/channels/83031186590400512/280432914829934592) at the moment, just because it's so appropriately titled, but that may end up changing more to the OpenGOAL discord in the future. Have a look in there for some example videos and messages I've added!
 
-**Do not use this decompilation project without providing your own legally purchased copy of the game.**
+# Development environment setup
 
-### Quick Start
+At the moment I'm not building separate releases for these builds, so you will need to set up your development environment using this repo and this branch. The instructions for setting up a dev environment can be found in the main OpenGOAL GitHub README: (https://github.com/open-goal/jak-project#setting-up-a-development-environment),
 
-If you just want to play the game, you can follow the steps in this video: https://www.youtube.com/watch?v=p8I9NfuZOgE
+Once this has been developed a little further I'd like to make this either a mod or configuration option for the launcher, however it's still early days. In the mean time will require a little technical experience though unfortunately, so if you're not ready to take the plunge yet check back in on the progress later either here, or in the OpenGOAL or Jak Speedruns discords (https://discord.gg/VZbXMHXzWv) and (https://discord.gg/W9dJ5EePde).
 
-We do not distribute any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every retail PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
+If you are though, or have already set up the OpenGOAL development environment (and therefore will just need to run a separate clone with this repo + branch instead), then you should be good to go.
 
-## Project Description
+# Running the TAS
 
-This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
-- decompile the original game code into human-readable GOAL code
-- develop our own compiler for GOAL and recompile game code for x86-64
-- create a tool to extract game assets into formats that can be easily viewed or modified
-- create tools to repack game assets into a format that our port uses.
+Once you have OpenGOAL running with `task boot-game` you're good to go, and should just be able to press `L3` to start it. While the TAS is running, you can press `Triangle` at any time to stop it (though you may need to hold it down for a little if you've slowed down the fps!)
 
-Our objectives are:
-- make the port a "native application" on x86-64, with high performance. It shouldn't be emulated, interpreted, or transpiled.
-- Our GOAL compiler's performance should be around the same as unoptimized C.
-- try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
-- support modifications. It should be possible to make edits to the code without everything else breaking.
+If this is the first thing you do though, you'll see an error like:
 
-We support both Linux and Windows on x86-64.
+`Failed to open inputs. Make sure to create a main.jaktas file in "jak-project/tas/jak1/" to get started! You can just copy one of the existing .jaktas files to test it.`
 
-> We do not support, or plan to support the ARM architecture.  This means that this will not run on devices such as an M1 Mac or a mobile device.
+This is because the branch at the moment is only set up to look for 1 file to run. The expectation is that you'll either edit this `jak-project/tas/jak1/main.jaktas` file directly for testing, or `import` another file in `main.jaktas` to work from.
 
-### Current Status
-
-Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out.
-
-![](./docs/img/promosmall1.png)
-![](./docs/img/promosmall2.png)
-
-YouTube playlist:
-https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
-
-### Methodology
-
-To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where we believe the original code had type casts (or where they feel appropriate) until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`.
-
-Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is continually tested as part of our unit tests.
-
-## Setting up a Development Environment
-
-The remainder of this README is catered towards people interested in building the project from source, typically with the intention on contributing as a developer.
-
-If this does not sound like you and you just want to play the game, refer to the above section [Quick Start](#quick-start)
-
-### Docker
-
-All three Linux systems are supported using Docker. 
-
-Pick your supported prefered flavour of linux and build your chosen image
+As an example, I'm currently using this as the content of my `main.jaktas` file while I'm testing:
 
 ```
-docker build -f docker/(Arch|Fedora|Ubuntu)/Dockerfile -t jak .
+# Quit to the title/logo screen and start a new game
+import=util/quit-to-menu
+import=util/create-new-game
+import=no-lts-geyser-rock
 ```
 
-This will create an image with all required dependencies and already built.
+This is almost an exact copy of `jak-project/tas/jak1/no-lts.jaktas`, but I've also included the `quit-to-menu` script at the start (making it easier to repeatedly test runs). You can also add additional instructions like `commands,frame-rate=999` at the top to run the TAS as fast as possible (you could go higher than 999 fps if you wanted, but good luck finding a machine that could run even that). More on these instructions below.
+
+# TAS commands
+
+I've been trying to keep examples of the current command set in the files as I've been working, but this will hopefully serve as a useful reference for these commands as well. I'll start with the basic structure of these files and then some of the individual lines within them.
+
+## The JakTAS files
+
+This file type is really just a `.txt` file in disguise, there's nothing special about it. The only reason I went with a separate extension is so that it would be a bit easier to build nice tooling for these files in the future (like syntax highlighting or error warnings). Basically as long as you have a text editor, you're good to go.
+
+The parser will run through anything either in the `main.jaktas` file or in anything it points to (using the `import` keyword), but it will ignore any empty lines or lines prefixed with `#` (which are treated as comments). If you enter anything particularly wrong though, like mispelled or wrongly capitlised commands, it may crash without warning. Just try commenting out lines until you find the cause in this case, I'll add some nicer error explanations in the future!
+
+I have put in a quick function to strip out whitespace so that `30 , Square` should be equivalent to `30,Square` for example, but try to remove all whitespace while you're working for the most reliable experience.
+
+## Comments
+
+These are mentioned above, but just for clarity: add a `#` to the start of any line to hide it from the parser. I've configured my `VSCode` to treat these as `diff` files for easy line comments and highlighting of just comments if that helps.
+
+Additionally empty lines will be ignored.
+
+## Import
+
+The `import` commands are quite straight forward - just include a file name relative to the `jak-project/tas/` directory without the `.jaktas` extension and it should load it. Look at `no-lts.jaktas` as an example:
 
 ```
-docker run -v "$(pwd)"/build:/home/jak/jak-project/build -it jak bash
+import=util/create-new-game
+import=no-lts-geyser-rock
 ```
 
-Note: If you change the content of the `build/` directory you'll need to rerun the `build` command. Alternatively you can get the build via `docker cp`.
+This will `import` the `jak-project/tas/util/create-new-game.jaktas` script (which creates a new game from the title/logo screen) and then run the `jak-project/tas/util/no-lts-geyser-rock.jaktas` script (which runs through Geyser Rock using `No LTS` strats).
 
-This will link your `build/` folder to the images so can validate your build or test it on an external device. 
+You should in theory be able to import as many files as you like (including importing files within other files) as long as you're within your system limits, but don't go crazy testing that theory.
 
-Docker images can be linked into your IDE (e.g. CLion) to help with codesniffing, static analysis, run tests and continuous build.
+## Commands
 
-Unfortunately you'll still need task runner on your local machine to run the game or instead, manually run the game via the commands found in `Taskfile.yml`.
+The next type of lines are lines for configuring your environment. These will run at the point in time they're added, but aren't necessarily frame dependent. The commands that you can use are written below, and I'll include one long example here to show that these can be chained:
 
-### Linux
+`commands,frame-rate=999,skip-spool-movies=true`
 
-#### Ubuntu (20.04)
+### frame-rate
 
-Install packages and init repository:
+While you're testing it might be convenient to either slow down or speed up the running frame rate at certain points in time, so you can skip sections you're confident in and highlight ones that you're working on. The way to do this is with the `frame-rate` command, with some examples below:
 
-```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python
-sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+```
+commands,frame-rate=60
+commands,frame-rate=999
+commands,frame-rate=1
 ```
 
-Compile:
+These will change your OpenGOAL instance to run at `60`, `999`, and `1` FPS respectively. These can be entered in almost any line to change the FPS when that line is reached.
 
-```sh
-cmake -B build && cmake --build build -j 8
+Changing these files just requires you to stop the current TAS (with `Triangle`) and the starting another (with `L3`) to update. No rebuilds or any other changes are required - content is loading from `main.jaktas` at the start of each TAS run.
+
+I normally work by adding `commands,frame-rate=999` at the top of my files, and then `commands,frame-rate=10` just before the sections that I'm working on so I can skip through the content and continue while analysing the frames.
+
+I'm hoping to add a frame advance function in the future, but this will need to do until that's ready to go!
+
+NOTE: If you add more than one of these in a line, only the last setting will be used.
+
+### skip-spool-movies
+
+This one is strangely named, but the idea was to separate it from the `cutscenes` terminology as they behave a little separate in the Jak games. That's why you can happily skip Samos telling you to adventure away, but still have to watch every Power Cell pick-up animation while you play.
+
+I've been attempting to work around this, and so far have a partial solution that can be enabled and disabled like so:
+
+```
+commands,skip-spool-movies=true
+commands,skip-spool-movies=false
 ```
 
-Run tests:
+One example of this in use is in `quit-to-menu` - the frame data I have set up there requires the loading of the logo to be skipped, and so there's a section in there that always turns it on. That's why it's always faster quitting to menu in this TAS script than in OpenGOAL or base Jak and Daxter currently.
 
-```sh
-./test.sh
+This can additional be used to skip powercell cutscenes in the same way - just put `commands,skip-spool-movies=true` at the top of any file after `create-new-game` has run (to make sure nothing reset this) and you should find all these scenes skipped!
+
+PLEASE NOTE!!!: This is currently not working perfectly, and so you won't always be able to skip the cutscenes. All the cell pick-ups should be reliable, but other cutscenes are actually functional - for example, try killing the Lurkers at the top of the Sentinel Beach canon with `skip-spool-movies` enabled and you'll see the Power Cell never spawns. I'm trying to make this setting more comprehensive, but it will still save a good chunk of time in its current state (and runs reliably)
+
+NOTE: If you add more than one of these in a line, only the last setting will be used.
+
+### Inputs
+
+The bread and butter of the TAS are the input lines, which are made up of a frame count and the buttons/controls to be used. These will make up 99% of every TAS file, but are pretty simple in their design. Some examples below:
+
+```
+13,leftx=140,lefty=0
+10,L1
+10,X
 ```
 
-Note: we have found that `clang` and `lld` are significantly faster to compile and link than `gcc`, generate faster code, and have better warning messages. To install these:
+The first line will, for `13` total frames, hold the left analog stick (`leftx` and `lefty` for the `x` and `y` directions respectively) in a certain spot, followed by holding `L1` (which is crouch/roll) and then `X` (which is jump). That means that these commands will move in a certain direction, and then roll jump towards it.
 
-```sh
-sudo apt install lld clang
+Once the directions have been set those values will stay present, so you don't need to add `leftx=140` for every line as an example. If you want to reset it though, you'll need to add a line to do so (for example `leftx=128` to reset to neutral). This is similar behaviour to how the command lines work.
+
+You can also chain multiple inputs in a single line (for example `10,Square,X,Circle` - Jak might not do much with them but they will go through all the same!
+
+These inputs are made up of `leftx`/`lefty` (for the left analog stick), `rightx`/`righty` (for the right analog stick), and then buttons listed in `gamepad_map` in `game\kernel\common\kmachine.cpp` (which include controls like `Triangle`/`Circle`/`X`/`Square`). These currently must be capitalised correctly to work so please be careful!
+
+NOTE: If you add more than one of these inputs in a line, only the last setting will be used.
+
+# Workflow
+
+For the moment we're a little lacking on the tooling side, with the above commands being all that I have to offer for functionality. I'm hoping to investigate options for displaying exact co-ordinates/direction/momentum as well as the ability to spawn in exact locations with these for faster TASing in lieu of save states, but I haven't investigated options for these yet. I have seen mods for OpenGOAL with similar functionality though, so hoping there are quick options!
+
+In the meantime the way that I'm working is by importing all of the files I need in my `main.jaktas` file, with some speed up commands in place to skip through content I've already finished:
+
+```
+commands,frame-rate=999,skip-spool-movies=true
+import=util/quit-to-menu
+import=util/create-new-game
+commands,frame-rate=999,skip-spool-movies=true
+import=no-lts-geyser-rock
 ```
 
-and run `cmake` (in a fresh build directory) with:
+Then I just start editing the latest file I'm working on (in this case `no-lts-geyser-rock.jaktas` in order to progress. I use `commands,frame-rate=10` to slow things down while changing individual inputs for a second, and then move on. Occasionally you might hit issues running with higher frame-rates when they de-sync at the start, but I know roughly what's happening there and I don't think it'll be an issue in the future. It shouldn't happen at the target `60fps` either way.
 
-```sh
-cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
-```
+Once the run has progressed significantly beyond Geyser this approach will need to change, but there are opportunities to just use file loads for most of the inputs and then join them up together once they're complete. For now I imagine this process and any bugs in this setup to be the biggest blockers to progress, but I'm actively looking to smooth them out.
 
-#### Arch
+# Closing notes
 
-Install packages and init repository:
-
-```sh
-sudo pacman -S cmake libpulse base-devel nasm python libx11 libxrandr libxinerama libxcursor libxi
-yay -S go-task
-```
-
-For Arch only, replace `task` with `go-task` in the rest of the instructions.
-
-Compile:
-
-```sh
-cmake -B build && cmake --build build -j 8
-```
-
-Run tests:
-
-```sh
-./test.sh
-```
-
-#### Fedora
-
-Install packages and init repository:
-
-```sh
-sudo dnf install cmake python lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel
-sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-```
-
-Compile with `clang`:
-
-```sh
-cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build
-cmake --build build -j$(nproc)
-```
-
-Run tests:
-
-```sh
-./test.sh
-```
-
-### Windows
-
-#### Required Software
-
-We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/).  At the time of writing this is Visual Studio 2022.
-
-You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer`, modifying the Visual Studio Installation.
-
-On Windows, it's recommended to use a package manager, we use Scoop. Follow the steps on the bottom of the homepage [here](https://scoop.sh/) to get it.
-
-Once Scoop is installed, run the following commands:
-
-```sh
-scoop install git llvm nasm python task
-```
-
-#### Using Visual Studio
-
-Clone the repository by running the following command in your folder of choice.
-
-```sh
-git clone https://github.com/open-goal/jak-project.git
-```
-
-This will create a `jak-project` folder, open the project as a CMake project via Visual Studio.
-
-![](./docs/img/windows/open-project.png)
-
-Then build the entire project as `Windows Release (clang)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang` on Windows as opposed to `msvc`, though it should work as well!
-
-![](./docs/img/windows/release-build.png)
-![](./docs/img/windows/build-all.png)
-
-### Building and Running the Game
-
-Getting a running game involves 4 steps:
-
-1. Build C++ tools (follow Getting Started steps above for your platform)
-2. Extract assets from the game
-3. Build the game
-4. Run the game
-
-#### Extract Assets
-
-First, setup your settings so the following scripts know which game you are using, and which version. For the black label version of the game, run the following in a terminal:
-
-```sh
-task set-game-jak1
-task set-decomp-ntscv1
-```
-
-For other versions of the game, you will need to use a different `-set-decomp-<VERSION>` command. An example for the PAL version:
-
-```sh
-task set-game-jak1
-task set-decomp-pal
-```
-
-> Run `task --list` to see the other available options
-
-> At the time of writing, only Jak 1 is expected to work end-to-end!
-
-The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of Jak 1 this is `iso_data/jak1`.
-
-Once this is done, open a terminal in the `jak-project` folder and run the following:
-
-```sh
-task extract
-```
-
-#### Build the Game
-
-The next step is to build the game itself.  To do so, in the same terminal run the following:
-
-```sh
-task repl
-```
-
-You will be greeted with a prompt like so:
-
-```sh
- _____             _____ _____ _____ __
-|     |___ ___ ___|   __|     |  _  |  |
-|  |  | . | -_|   |  |  |  |  |     |  |__
-|_____|  _|___|_|_|_____|_____|__|__|_____|
-      |_|
-Welcome to OpenGOAL 0.8!
-Run (repl-help) for help with common commands and REPL usage.
-Run (lt) to connect to the local target.
-
-g >
-```
-
-Run the following to build the game:
-
-```sh
-g > (mi)
-```
-
-> IMPORTANT NOTE! If you're not using the black label version, you may hit issues trying to run `(mi)` in this step. An example error might include something like:
->
-> `Input file iso_data/jak1/MUS/TWEAKVAL.MUS does not exist.`
->
-> This is because other version paths are not currently accounted for in the build. A quick workaround is to rename both your `decompiler_out` and `iso_data` folders to use the black label naming, for example changing `decompiler_out/jak1_pal` to `decompiler_out/jak1` and `iso_data/jak1_pal` to `iso_data/jak1`, then running `(mi)` again.
-
-#### Run the Game
-
-Finally the game can be ran.  Open a second terminal from the `jak-project` directory and run the following:
-
-```sh
-task boot-game
-```
-
-The game should boot automatically if everything was done correctly.
-
-##### Connecting the REPL to the Game
-
-Connecting the REPL to the game allows you to inspect and modify code or data while the game is running.
-
-To do so, in the REPL after a successful `(mi)`, run the following:
-
-```sh
-g > (lt)
-```
-
-If successful, your prompt should change to:
-
-```sh
-gc>
-```
-
-For example, running the following will print out some basic information about Jak:
-
-```sh
-gc> *target*
-```
-
-##### Running the Game Without Auto-Booting
-
-You can also start up the game without booting.  To do so run the following in one terminal
-
-```sh
-task run-game
-```
-
-And then in your REPL run the following (after a successful `(mi)`):
-
-```sh
-g > (lt)
-[Listener] Socket connected established! (took 0 tries). Waiting for version...
-Got version 0.8 OK!
-[Debugger] Context: valid = true, s7 = 0x147d24, base = 0x2123000000, tid = 2438049
-
-gc> (lg)
-10836466        #xa559f2              0.0000        ("game" "kernel")
-
-gc> (test-play)
-(play :use-vis #t :init-game #f) has been called!
-0        #x0              0.0000        0
-
-gc>
-```
-
-#### Interacting with the Game
-
-In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
-
-Check out the `pc_debug`, `examples` and `pc` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
-
-## Technical Project Overview
-
-There are four main components to the project.
-
-1. `goalc` - the GOAL compiler for x86-64
-2. `decompiler` - our decompiler
-3. `goal_src/` - the folder containing all OpenGOAL / GOOS code
-4. `game` - aka the runtime written in C++
-
-Let's break down each component.
-
-### `goalc`
-
-Our implementation of GOAL is called OpenGOAL.
-
-All of the compiler source code is in `goalc/`. The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
-
-#### Running the compiler
-
-**Environment Agnostic**
-
-If you have installed `task` as recommended above, you can run the compiler with `task repl`
-
-**Linux**
-
-To run the compiler on Linux, there is a script `scripts/shell/gc.sh`.
-
-**Windows**
-
-On Windows, there is a `scripts/batch/gc.bat` scripts and a `scripts/batch/gc-no-lt.bat` script, the latter of which will not attempt to automatically attach to a running target.
-
-### `decompiler`
-
-The second component to the project is the decompiler.
-
-The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Files in this folder will not be used by the compiler.
-
-#### Running the decompiler
-
-You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
-
-![](./docs/img/iso_data-help.png)
-
-The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once.
-
-**Environment Agnostic**
-
-If you have installed `task` as recommended above, you can run the compiler with `task decomp`
-
-**Linux**
-
-To run, you can use `scripts/shell/decomp.sh` to run the decompiler
-
-**Windows**
-
-To run, you can use `scripts/shell/decomp-jak1.bat` to run the decompiler
-
-### `goal_src/`
-
-The game source code, written in OpenGOAL, is located in `goal_src`. All GOAL and GOOS code should be in this folder.
-
-### `game` runtime
-
-The final component is the "runtime", located in `game`. This is the part of the game that's written in C++.
-
-In the port, that includes:
-- The "C Kernel", which contains the GOAL linker and some low-level GOAL language features. GOAL has a completely custom dynamically linked object file format so in order to load the first GOAL code, you need a linker written in C++. Some low-level functions for memory allocation, communicating with the I/O Processor, symbol table, strings, and the type system are also implemented in C, as these are required for the linker. It also listens for incoming messages from the compiler and passes them to the running game. This also initializes the game, by initializing the PS2 hardware, allocating the GOAL heaps, loading the GOAL kernel off of the DVD, and executing the kernel dispatcher function. This is in the `game/kernel` folder. This should be as close as possible to the game, and all differences should be noted with a comment.
-- Implementation of Sony's standard library. GOAL code can call C library functions, and Naughty Dog used some Sony library functions to access files, memory cards, controllers, and communicate with the separate I/O Processor. The library functions are in `game/sce`. Implementations of library features specific to the PC port are located in `game/system`.
-- The I/O Processor driver, OVERLORD. The PS2 had a separate CPU called the I/O Processor (IOP) that was directly connected to the DVD drive hardware and the sound hardware. Naughty Dog created a custom driver for the IOP that handled streaming data off of the DVD. It is much more complicated than I first expected. It's located in `game/overlord`. Like the C kernel, we try to keep this as close as possible to the actual game.
-- Sound code. Naughty Dog used a third party library for sound called `989SND`. Code for the library and an interface for it is located in `game/sound`.
-- PC specific graphics code. We have a functional OpenGL renderer and context that can create a game window and display graphics on it. The specific renderers used by the game however are mostly implemented. Aside from post-processing effects, everything in the game is rendered. This is located in `game/graphics`. While many liberties will be taken to make this work, the end result should very closely match the actual game.
-- Extra assets used by the port in some fashion, located in `game/assets`. These include extra text files, icons, etc.
+Thanks for reading this far - I hope you're now as keen as I am to see this TAS come to life! The Jak games have deserved these forever but historically the PS2 and emulators have been nightmares for TASing, where OpenGOAL has made the dream a reality. Looking forward to seeing what we can make of it!
