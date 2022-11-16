@@ -996,8 +996,12 @@
               (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0)))
                 (ja-no-eval :num! (seek!) :frame-num f0-14)
                 )
-              ;; (set! v0-39 (current-str-pos spool-sound))
-              (set! v0-39 (the-as int f28-0))
+              (cond 
+                ((= *skip-spool-movies* 1)
+                  (set! v0-39 (the-as int f28-0)))
+                (else
+                  (set! v0-39 (current-str-pos spool-sound)))
+                )
               (set! sv-72 v0-39)
               )
             (set! sv-24 f28-0)
@@ -1010,8 +1014,12 @@
           )
         )
       )
-    ;; (set! spool-part (+ spool-part 1))
-    (set! spool-part (-> arg0 parts))
+    (cond 
+      ((= *skip-spool-movies* 1)
+        (set! spool-part (-> arg0 parts)))
+      (else
+        (set! spool-part (+ spool-part 1)))
+      )
     )
   (set! spool-part (+ spool-part -1))
   (label cfg-88)

@@ -61,4 +61,4 @@ __pycache__/
 *.bak
 
 # tas content
-tas/main.jaktas
+tas/**/main.jaktas

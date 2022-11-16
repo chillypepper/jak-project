@@ -145,10 +145,16 @@
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
 
-  (let ((pc-frame-rate (pc-get-frame-rate)))
-    (if (!= (-> obj target-fps) pc-frame-rate)
-      (set-frame-rate! obj (pc-get-frame-rate))
-      ))
+  (set! *pc-tas-frame* (pc-get-tas-frame))
+  (set! *skip-spool-movies* (pc-get-skip-spool-movies))
+
+  ;; TODO We only do this when a cutscene isn't playing for TAS runs
+  (if (or (= *pc-tas-frame* 0) (not (-> *pc-settings* movie?)))
+    (let ((pc-frame-rate (pc-get-frame-rate)))
+      (if (!= (-> obj target-fps) pc-frame-rate)
+        (set-frame-rate! obj (the-as int (pc-get-frame-rate)))
+        ))
+    )
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)

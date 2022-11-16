@@ -336,7 +336,6 @@
 (define-extern pc-pad-input-index-get (function int))
 (define-extern pc-pad-input-map-save! (function none))
 (define-extern pc-pad-get-mapped-button (function int int int))
-(define-extern pc-get-frame-rate (function int))
 (define-extern pc-get-fullscreen (function symbol))
 (define-extern pc-get-screen-size (function int (pointer int32) (pointer int32) none))
 (define-extern pc-get-screen-rate (function int int))
@@ -366,6 +365,9 @@
 (define-extern pc-set-game-resolution (function int int none))
 (define-extern pc-set-msaa (function int none))
 (define-extern pc-set-gfx-hack (function pc-gfx-hack symbol none))
+(define-extern pc-get-tas-frame (function uint))
+(define-extern pc-get-frame-rate (function uint))
+(define-extern pc-get-skip-spool-movies (function uint))
 
 (define-extern pc-get-unix-timestamp (function int))
 

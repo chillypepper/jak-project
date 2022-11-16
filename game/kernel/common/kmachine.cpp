@@ -42,8 +42,12 @@ u32 vblank_interrupt_handler = 0;
 Timer ee_clock_timer;
 
 const std::string frame_inputs_folder_path = "tas/jak1/";
+const std::string frame_inputs_main_file_name = "main";
 const std::string frame_inputs_file_extension = ".jaktas";
 u64 tas_frame;
+u64 tas_inputs_line;
+u64 tas_commands_line;
+u64 skip_spool_movies;
 
 // I am also Not crazy about this declaration
 const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
@@ -86,11 +90,14 @@ struct FrameInputs {
 struct FrameCommands {
   uint64_t frame_index;
   s64 frame_rate;
+  u64 skip_spool_movies;
 
   // Quick debug output just to make sure things look right
   std::string toString() {
     return "@" + std::string("\"frame_index\": \"") + std::to_string(frame_index) + "\"," +
-           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," + "@";
+           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +
+           std::string("\"skip_spool_movies\": \"") + std::to_string(skip_spool_movies) + "\"," +
+           "@";
   }
 };
 
@@ -106,7 +113,8 @@ void load_tas_inputs(std::string file_name = "") {
 
   std::ifstream frame_input_file;
   frame_input_file.clear();
-  frame_input_file.open(frame_inputs_folder_path + (file_name.size() == 0 ? "main" : file_name) +
+  frame_input_file.open(frame_inputs_folder_path +
+                        (file_name.size() == 0 ? frame_inputs_main_file_name : file_name) +
                         frame_inputs_file_extension);
 
   // First load the file contents, we'll be reading line by line
@@ -151,20 +159,30 @@ void load_tas_inputs(std::string file_name = "") {
         // Set defaults for the first frame, and carry existing positions for the next
         if (frame_commands.size() == 0) {
           command.frame_rate = 60;
+          command.skip_spool_movies = 0;
         } else {
           size_t lastIndex = frame_commands.size() - 1;
           command.frame_rate = frame_commands[lastIndex].frame_rate;
+          command.skip_spool_movies = frame_commands[lastIndex].skip_spool_movies;
         }
 
         // Break the line apart by the separator
         while (std::getline(line_stream, value, ',')) {
           // Update the current frame rate, if there are multiple we just take the latest
-          if (value._Starts_with("framerate=")) {
-            s64 frame_rate = std::stoi(value.substr(std::string("framerate=").size()));
+          if (value._Starts_with("frame-rate=")) {
+            // TODO I think this should be limited to 9999 eventually - no more than 4 digits
+            s64 frame_rate = std::stoi(value.substr(std::string("frame-rate=").size()));
 
             if (frame_rate >= 0) {
               command.frame_rate = frame_rate;
             }
+          }
+
+          // Update the skip spool movie settings, if there are multiple we just take the latest
+          if (value._Starts_with("skip-spool-movies=")) {
+            // TODO With proper error checking make this either "true" or "false" to be valid
+            command.skip_spool_movies =
+                value.substr(std::string("skip-spool-movies=").size()) == "true";
           }
         }
 
@@ -284,6 +302,9 @@ void kmachine_init_globals_common() {
   vblank_interrupt_handler = 0;
   ee_clock_timer = Timer();
   tas_frame = 0;
+  tas_inputs_line = 0;
+  tas_commands_line = 0;
+  skip_spool_movies = 0;
 }
 
 /*!
@@ -364,13 +385,20 @@ u64 CPadGetData(u64 cpad_info) {
         if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3))) {
           lg::debug("Starting TAS ...");
           tas_frame = 1;
+          tas_inputs_line = 0;
+          tas_commands_line = 0;
+          skip_spool_movies = 0;
           load_tas_inputs();
         }
 
-        // Use Square to disable the TAS. This isn't a toggle to avoid multi frame button presses
-        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Square)) && tas_frame > 0) {
+        // Use Triangle to disable the TAS. This isn't a toggle to avoid multi frame button presses
+        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle)) &&
+            tas_frame > 0) {
           lg::debug("Ending TAS");
           tas_frame = 0;
+          tas_inputs_line = 0;
+          tas_commands_line = 0;
+          skip_spool_movies = 0;
           set_frame_rate(60);
         }
 
@@ -382,17 +410,23 @@ u64 CPadGetData(u64 cpad_info) {
           cpad->rightx = 128;
           cpad->righty = 128;
 
-          for (auto command : frame_commands) {
+          if (tas_commands_line < frame_commands.size()) {
+            auto command = frame_commands[tas_commands_line];
+
             if (tas_frame == command.frame_index) {
               if (Gfx::get_frame_rate() != command.frame_rate) {
                 set_frame_rate(command.frame_rate);
               }
 
-              break;
+              skip_spool_movies = command.skip_spool_movies;
+
+              ++tas_commands_line;
             }
           }
 
-          for (auto input : frame_inputs) {
+          if (tas_inputs_line < frame_inputs.size()) {
+            auto input = frame_inputs[tas_inputs_line];
+
             if (tas_frame <= input.end_frame) {
               cpad->button0 = input.button0;
               cpad->leftx = input.leftx;
@@ -400,7 +434,9 @@ u64 CPadGetData(u64 cpad_info) {
               cpad->rightx = input.rightx;
               cpad->righty = input.righty;
 
-              break;
+              if (tas_frame == input.end_frame) {
+                ++tas_inputs_line;
+              }
             }
           }
 
@@ -818,4 +854,12 @@ void pc_texture_upload_now(u32 page, u32 mode) {
 
 void pc_texture_relocate(u32 dst, u32 src, u32 format) {
   Gfx::texture_relocate(dst, src, format);
+}
+
+u64 get_tas_frame() {
+  return tas_frame;
+}
+
+u64 get_skip_spool_movies() {
+  return skip_spool_movies;
 }

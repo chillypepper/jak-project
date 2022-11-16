@@ -46,6 +46,6 @@ class Timer {
    */
   double getSeconds() const { return (double)getNs() / 1.e9; }
 
-  bool _is_tas_timer = false;
+  bool _is_tas_timer = true;
   struct timespec _startTime = {};
 };

@@ -12,6 +12,10 @@
 1,Left
 7
 1,X
+# TODO At the moment this skip is required, the loading wait doesn't work without it!
+commands,skip-spool-movies=true
 # Wait for the title/logo screen to load. Generally keep this at the highest known frame time for safety.
 # Lowest known quit frames: 399 (Geyser). Lowest known quit frames: 699 (Citadel entrance)
 699
+# TODO Turning the above skip back off
+commands,skip-spool-movies=false

@@ -233,4 +233,5 @@
   )
 
 (define-extern *setting-control* setting-control)
-
+(define-extern *pc-tas-frame* uint)
+(define-extern *skip-spool-movies* uint)
