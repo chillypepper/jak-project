@@ -1,0 +1,23 @@
+# Open the start menu, navigate to save game, and save the current (or top, by default) slot
+# NOTE This assumes there is already a save file there that will need to be overwritten
+1,Start
+41
+1,Circle
+46
+1,Down
+1
+1,Down
+1
+1,Down
+1
+1,Down
+1,X
+46
+1,X
+46
+1,Left
+1,X
+
+# NOTE After this wait for the menu to load again you can just instantly use 1,Start to close the
+# menu, but this is left out to give the option to move around the menu
+29

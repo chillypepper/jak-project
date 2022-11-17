@@ -1,0 +1,26 @@
+# Open the start menu, navigate to load game, and save the current (or top, by default) slot
+# NOTE This assumes there is already a save file there that will need to be overwritten
+1,Start
+41
+1,Circle
+46
+1,Down
+1
+1,Down
+1
+1,Down
+1
+1,Down
+1,X
+46
+1,X
+46
+1,Left
+1,X
+29
+1,Up
+1,X
+46
+1,X
+
+# NOTE No load wait is included after this menu, you'll need different load times depending on where you run this

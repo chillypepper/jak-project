@@ -1,15 +1,14 @@
 # Assumes we're running from the title/logo screen
 1,Start
-203
+25
 1,X
-303
+46
 1,X
-203
+46
 1,Left
-7
 1,X
 
-# NOTE This is a special wait when starting a new game, during this time fps will be reset to 60 due
-# to speedruns.gc config (among other things). Safe to use inputs and commands after this
-# TODO I have seen cases of this not being enough of a buffer, may need to be increased
-70
+# NOTE This is the wait time until you've exited the portal in Geyser and can add your first input
+# You can technically start safely using commands part way through this (eg changing the frame-rate
+# again after the new file sets it back to 60) but you're better to wait for this animation first
+158
