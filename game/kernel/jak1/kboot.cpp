@@ -120,6 +120,7 @@ void KernelCheckAndDispatch() {
     //(**kernel_dispatcher)();
 
     Timer kernel_dispatch_timer;
+    kernel_dispatch_timer.start(false);
     if (MasterUseKernel) {
       // use the GOAL kernel.
       call_goal_on_stack(Ptr<Function>(kernel_dispatcher->value), goal_stack, s7.offset,

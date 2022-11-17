@@ -51,7 +51,7 @@ void Timer::start(bool is_tas_timer) {
 
 int64_t Timer::getNs() const {
   if (_is_tas_timer) {
-    return 17000000;  // 0.017 seconds, 1/60th of a second
+    return 16666667;  // Roughly 1/60th of a second
   } else {
     struct timespec now = {};
     clock_get_platform_timer(&now);

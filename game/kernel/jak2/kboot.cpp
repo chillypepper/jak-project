@@ -96,6 +96,7 @@ void KernelDispatch(u32 dispatcher_func) {
 
   // run the kernel!
   Timer dispatch_timer;
+  dispatch_timer.start(false);
   if (MasterUseKernel) {
     call_goal_on_stack(Ptr<Function>(dispatcher_func), goal_stack, s7.offset, g_ee_main_mem);
   } else {

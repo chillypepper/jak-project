@@ -44,6 +44,7 @@ Timer ee_clock_timer;
 const std::string frame_inputs_folder_path = "tas/jak1/";
 const std::string frame_inputs_main_file_name = "main";
 const std::string frame_inputs_file_extension = ".jaktas";
+const std::string frame_inputs_output_file_extension = ".output" + frame_inputs_file_extension;
 u64 tas_frame;
 u64 tas_inputs_line;
 u64 tas_commands_line;
@@ -103,6 +104,7 @@ struct FrameCommands {
 
 std::vector<FrameInputs> frame_inputs;
 std::vector<FrameCommands> frame_commands;
+std::vector<FrameInputs> input_recordings;
 
 // TODO This shouldn't be adding to a global var, should just import and return
 void load_tas_inputs(std::string file_name = "") {
@@ -293,6 +295,165 @@ void load_tas_inputs(std::string file_name = "") {
   }
 }
 
+void handleTASPad(CPadInfo* cpad) {
+  // Use L2 to enable recording inputs. This isn't a toggle to avoid multi frame button
+  // presses
+  if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L2)) &&
+      input_recordings.size() == 0) {
+    lg::debug("Starting recording ...");
+
+    FrameInputs input;
+
+    input.start_frame = 1;
+    input.end_frame = 1;
+    input.button0 = 0;
+    input.leftx = 128;
+    input.lefty = 128;
+    input.rightx = 128;
+    input.righty = 128;
+
+    input_recordings.clear();
+    input_recordings.push_back(input);
+  }
+
+  // Use R2 to disable recording inputs. This isn't a toggle to avoid multi frame button
+  // presses
+  if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::R2)) &&
+      input_recordings.size() != 0) {
+    lg::debug("Ending recording");
+
+    std::ofstream frame_output_file;
+    u64 index = 0;
+    frame_output_file.open(frame_inputs_folder_path + std::to_string(std::time(nullptr)) +
+                           frame_inputs_output_file_extension);
+
+    for (auto input : input_recordings) {
+      if (index != 0) {
+        std::string controls = std::string("") +
+                               (input_recordings[index - 1].leftx != input.leftx
+                                    ? ",leftx=" + std::to_string(input.leftx)
+                                    : "") +
+                               (input_recordings[index - 1].lefty != input.lefty
+                                    ? ",lefty=" + std::to_string(input.lefty)
+                                    : "") +
+                               (input_recordings[index - 1].rightx != input.rightx
+                                    ? ",rightx=" + std::to_string(input.rightx)
+                                    : "") +
+                               (input_recordings[index - 1].righty != input.righty
+                                    ? ",righty=" + std::to_string(input.righty)
+                                    : "");
+
+        for (auto button : gamepad_map) {
+          if (input.button0 & (u16)std::pow(2, static_cast<int>(button.second))) {
+            controls += "," + button.first;
+          }
+        }
+
+        frame_output_file << std::to_string((input.end_frame - input.start_frame) + 1) + controls
+                          << std::endl;
+      }
+
+      ++index;
+    }
+
+    frame_output_file.close();
+
+    input_recordings.clear();
+  }
+
+  if (input_recordings.size() != 0) {
+    // TODO Only every 4th frame actually matters. 3 of them are just garbage with leftx/y
+    // etc at 127 always That explains why the TAS inputs are so high and why sometimes the
+    // 1 frame inputs just don't work without padding!
+    size_t lastIndex = input_recordings.size() - 1;
+
+    if (input_recordings[lastIndex].button0 == cpad->button0 &&
+        input_recordings[lastIndex].leftx == cpad->leftx &&
+        input_recordings[lastIndex].lefty == cpad->lefty &&
+        input_recordings[lastIndex].rightx == cpad->rightx &&
+        input_recordings[lastIndex].righty == cpad->righty) {
+      input_recordings[lastIndex].end_frame += 1;
+    } else {
+      FrameInputs input;
+
+      input.start_frame = input_recordings[lastIndex].end_frame + 1;
+      input.end_frame = input_recordings[lastIndex].end_frame + 1;
+      input.button0 = cpad->button0;
+      input.leftx = cpad->leftx;
+      input.lefty = cpad->lefty;
+      input.rightx = cpad->rightx;
+      input.righty = cpad->righty;
+
+      input_recordings.push_back(input);
+    }
+  }
+
+  // Use L3 to enable the TAS. This isn't a toggle to avoid multi frame button presses
+  if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3)) &&
+      input_recordings.size() == 0) {
+    lg::debug("Starting TAS ...");
+    tas_frame = 1;
+    tas_inputs_line = 0;
+    tas_commands_line = 0;
+    skip_spool_movies = 0;
+    load_tas_inputs();
+  }
+
+  // Use Triangle to disable the TAS. This isn't a toggle to avoid multi frame button
+  // presses
+  if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle)) && tas_frame > 0) {
+    lg::debug("Ending TAS");
+    tas_frame = 0;
+    tas_inputs_line = 0;
+    tas_commands_line = 0;
+    skip_spool_movies = 0;
+    set_frame_rate(60);
+  }
+
+  // If the tas is enabled take control over all the buttons until you press left again
+  if (tas_frame > 0) {
+    cpad->button0 = 0;
+    cpad->leftx = 128;
+    cpad->lefty = 128;
+    cpad->rightx = 128;
+    cpad->righty = 128;
+
+    if (tas_commands_line < frame_commands.size()) {
+      auto command = frame_commands[tas_commands_line];
+
+      if (tas_frame == command.frame_index) {
+        if (Gfx::get_frame_rate() != command.frame_rate) {
+          set_frame_rate(command.frame_rate);
+        }
+
+        skip_spool_movies = command.skip_spool_movies;
+
+        ++tas_commands_line;
+      }
+    }
+
+    if (tas_inputs_line < frame_inputs.size()) {
+      auto input = frame_inputs[tas_inputs_line];
+
+      if (tas_frame <= input.end_frame) {
+        cpad->button0 = input.button0;
+        cpad->leftx = input.leftx;
+        cpad->lefty = input.lefty;
+        cpad->rightx = input.rightx;
+        cpad->righty = input.righty;
+
+        if (tas_frame == input.end_frame) {
+          ++tas_inputs_line;
+        }
+      }
+    }
+
+    // lg::debug("Running frame: " + std::to_string(tas_frame));
+
+    tas_frame += 1;
+  }
+}
+
 void kmachine_init_globals_common() {
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
@@ -381,68 +542,9 @@ u64 CPadGetData(u64 cpad_info) {
         }
         cpad->valid = pad_state;
 
-        // Use L3 to enable the TAS. This isn't a toggle to avoid multi frame button presses
-        if (tas_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3))) {
-          lg::debug("Starting TAS ...");
-          tas_frame = 1;
-          tas_inputs_line = 0;
-          tas_commands_line = 0;
-          skip_spool_movies = 0;
-          load_tas_inputs();
-        }
-
-        // Use Triangle to disable the TAS. This isn't a toggle to avoid multi frame button presses
-        if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle)) &&
-            tas_frame > 0) {
-          lg::debug("Ending TAS");
-          tas_frame = 0;
-          tas_inputs_line = 0;
-          tas_commands_line = 0;
-          skip_spool_movies = 0;
-          set_frame_rate(60);
-        }
-
-        // If the tas is enabled take control over all the buttons until you press left again
-        if (tas_frame > 0) {
-          cpad->button0 = 0;
-          cpad->leftx = 128;
-          cpad->lefty = 128;
-          cpad->rightx = 128;
-          cpad->righty = 128;
-
-          if (tas_commands_line < frame_commands.size()) {
-            auto command = frame_commands[tas_commands_line];
-
-            if (tas_frame == command.frame_index) {
-              if (Gfx::get_frame_rate() != command.frame_rate) {
-                set_frame_rate(command.frame_rate);
-              }
-
-              skip_spool_movies = command.skip_spool_movies;
-
-              ++tas_commands_line;
-            }
-          }
-
-          if (tas_inputs_line < frame_inputs.size()) {
-            auto input = frame_inputs[tas_inputs_line];
-
-            if (tas_frame <= input.end_frame) {
-              cpad->button0 = input.button0;
-              cpad->leftx = input.leftx;
-              cpad->lefty = input.lefty;
-              cpad->rightx = input.rightx;
-              cpad->righty = input.righty;
-
-              if (tas_frame == input.end_frame) {
-                ++tas_inputs_line;
-              }
-            }
-          }
-
-          // lg::debug("Running frame: " + std::to_string(tas_frame));
-
-          tas_frame += 1;
+        // We only check for TAS controls from the first pad
+        if (cpad->number == 0) {
+          handleTASPad(cpad);
         }
       }
       break;
