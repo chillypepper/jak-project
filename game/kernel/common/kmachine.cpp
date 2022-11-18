@@ -304,13 +304,8 @@ void handleTASPad(CPadInfo* cpad) {
 
     FrameInputs input;
 
-    input.start_frame = 1;
-    input.end_frame = 1;
-    input.button0 = 0;
-    input.leftx = 128;
-    input.lefty = 128;
-    input.rightx = 128;
-    input.righty = 128;
+    input.start_frame = 0;
+    input.end_frame = 0;
 
     input_recordings.clear();
     input_recordings.push_back(input);
@@ -330,16 +325,16 @@ void handleTASPad(CPadInfo* cpad) {
     for (auto input : input_recordings) {
       if (index != 0) {
         std::string controls = std::string("") +
-                               (input_recordings[index - 1].leftx != input.leftx
+                               (index == 1 || input_recordings[index - 1].leftx != input.leftx
                                     ? ",leftx=" + std::to_string(input.leftx)
                                     : "") +
-                               (input_recordings[index - 1].lefty != input.lefty
+                               (index == 1 || input_recordings[index - 1].lefty != input.lefty
                                     ? ",lefty=" + std::to_string(input.lefty)
                                     : "") +
-                               (input_recordings[index - 1].rightx != input.rightx
+                               (index == 1 || input_recordings[index - 1].rightx != input.rightx
                                     ? ",rightx=" + std::to_string(input.rightx)
                                     : "") +
-                               (input_recordings[index - 1].righty != input.righty
+                               (index == 1 || input_recordings[index - 1].righty != input.righty
                                     ? ",righty=" + std::to_string(input.righty)
                                     : "");
 
@@ -362,9 +357,6 @@ void handleTASPad(CPadInfo* cpad) {
   }
 
   if (input_recordings.size() != 0) {
-    // TODO Only every 4th frame actually matters. 3 of them are just garbage with leftx/y
-    // etc at 127 always That explains why the TAS inputs are so high and why sometimes the
-    // 1 frame inputs just don't work without padding!
     size_t lastIndex = input_recordings.size() - 1;
 
     if (input_recordings[lastIndex].button0 == cpad->button0 &&
@@ -399,9 +391,11 @@ void handleTASPad(CPadInfo* cpad) {
     load_tas_inputs();
   }
 
-  // Use Triangle to disable the TAS. This isn't a toggle to avoid multi frame button
-  // presses
-  if (cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle)) && tas_frame > 0) {
+  // Use Triangle to disable the TAS. Automatically disabled if we reach the end. This isn't a
+  // toggle to avoid multi frame button presses
+  if ((tas_inputs_line >= frame_inputs.size() ||
+       cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle))) &&
+      tas_frame > 0) {
     lg::debug("Ending TAS");
     tas_frame = 0;
     tas_inputs_line = 0;
@@ -410,7 +404,7 @@ void handleTASPad(CPadInfo* cpad) {
     set_frame_rate(60);
   }
 
-  // If the tas is enabled take control over all the buttons until you press left again
+  // If TAS is enabled we take over the controller, until it's finished or cancelled
   if (tas_frame > 0) {
     cpad->button0 = 0;
     cpad->leftx = 128;
