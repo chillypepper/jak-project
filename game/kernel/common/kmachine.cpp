@@ -68,6 +68,11 @@ const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Butto
                                                            {"X", Pad::Button::X},
                                                            {"Square", Pad::Button::Square}};
 
+struct InputValue {
+  std::string key;
+  std::string value;
+};
+
 struct FrameInputs {
   uint64_t start_frame;
   uint64_t end_frame;
@@ -88,10 +93,11 @@ struct FrameInputs {
            std::string("\"righty\": \"") + std::to_string(righty) + "\"," + "@";
   }
 };
+
 struct FrameCommands {
-  uint64_t frame_index;
-  s64 frame_rate;
-  u64 skip_spool_movies;
+  u64 frame_index;
+  u64 frame_rate;
+  u8 skip_spool_movies;
 
   // Quick debug output just to make sure things look right
   std::string toString() {
@@ -105,6 +111,29 @@ struct FrameCommands {
 std::vector<FrameInputs> frame_inputs;
 std::vector<FrameCommands> frame_commands;
 std::vector<FrameInputs> input_recordings;
+
+InputValue get_input_value_from_field(std::string value, std::vector<std::string> types) {
+  size_t value_size = value.size();
+
+  for (auto type : types) {
+    std::string prefix = type + "=";
+    size_t prefix_size = prefix.size();
+
+    if (value_size > prefix_size && value._Starts_with(prefix)) {
+      return {.key = type, .value = value.substr(prefix_size)};
+    }
+  }
+
+  throw std::runtime_error("Invalid field");
+}
+
+u8 get_input_bool(std::string value) {
+  if (value == "true" || value == "false") {
+    return value == "true" ? 1 : 0;
+  }
+
+  throw std::runtime_error("Invalid bool");
+}
 
 // TODO This shouldn't be adding to a global var, should just import and return
 void load_tas_inputs(std::string file_name = "") {
@@ -121,10 +150,12 @@ void load_tas_inputs(std::string file_name = "") {
 
   // First load the file contents, we'll be reading line by line
   if (frame_input_file.is_open()) {
-    std::string line;
+    std::string raw_line;
 
     // Read each line in the file
-    while (std::getline(frame_input_file, line)) {
+    while (std::getline(frame_input_file, raw_line)) {
+      std::string line = raw_line;
+
       // Remove all whitespace from the line
       line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
 
@@ -133,140 +164,123 @@ void load_tas_inputs(std::string file_name = "") {
         continue;
       }
 
+      // Handle all of the special commands
+      try {
+        InputValue pair =
+            get_input_value_from_field(line, {"import", "frame-rate", "skip-spool-movies"});
+
+        // Import another tas file, and just read it in like it was originally part of this file
+        if (pair.key == "import") {
+          // TODO Some protection against cyclical imports maybe?
+          // TODO Some protection against file walking
+          load_tas_inputs(pair.value);
+
+          continue;
+        }
+
+        // Set defaults for the first index, and carry commands for the rest
+        if (frame_commands.size() == 0) {
+          frame_commands.push_back({.frame_index = 1, .frame_rate = 60, .skip_spool_movies = 0});
+        } else {
+          // Use the latest frame from the inputs for the command
+          size_t inputs_size = frame_inputs.size();
+          u64 frame_index = inputs_size == 0 ? 1 : frame_inputs[inputs_size - 1].end_frame + 1;
+          size_t last_index = frame_commands.size() - 1;
+
+          // Multiple commands in a row will have the same frame so don't create another
+          if (frame_index != frame_commands[last_index].frame_index) {
+            FrameCommands command;
+            memcpy(&command, &frame_commands[last_index], sizeof(frame_commands[last_index]));
+            command.frame_index = frame_index;
+            frame_commands.push_back(command);
+          }
+        }
+
+        if (pair.key == "frame-rate") {
+          frame_commands[frame_commands.size() - 1].frame_rate = std::stoul(pair.value);
+        } else if (pair.key == "skip-spool-movies") {
+          frame_commands[frame_commands.size() - 1].skip_spool_movies = get_input_bool(pair.value);
+        } else {
+          // If we reach here we passed something in the valid commands list but didn't handle it,
+          // the only real case this could happen is if we added a new field and forgot to implement
+          lg::warn("[TAS Input Error] Valid command not implemented: " + raw_line);
+        }
+
+        continue;
+      } catch (...) {
+        // Intentionally left empty. We throw line errors down in the input frame number check
+      }
+
+      // If we're here the only option left to test for is an input frame
       std::stringstream line_stream(line);
       std::string value;
       uint16_t index = 0;
-      FrameInputs input;
-      FrameCommands command;
-
-      // Import another tas file, and just read it in like it was originally part of this file
-      // TODO Some protection against cyclical imports maybe?
-      if (line._Starts_with("import=")) {
-        std::string import = line.substr(std::string("import=").size());
-
-        // TODO Some protection against file walking
-        if (import.size() > 0) {
-          load_tas_inputs(import);
-        }
-
-        continue;
-      }
-
-      // TODO Multiple command lines in a row will result in all but the first being ignored, as we
-      // just look for the first command match with our current frame
-      if (line._Starts_with("commands")) {
-        command.frame_index =
-            frame_inputs.size() == 0 ? 1 : frame_inputs[frame_inputs.size() - 1].end_frame + 1;
-
-        // Set defaults for the first frame, and carry existing positions for the next
-        if (frame_commands.size() == 0) {
-          command.frame_rate = 60;
-          command.skip_spool_movies = 0;
-        } else {
-          size_t lastIndex = frame_commands.size() - 1;
-          command.frame_rate = frame_commands[lastIndex].frame_rate;
-          command.skip_spool_movies = frame_commands[lastIndex].skip_spool_movies;
-        }
-
-        // Break the line apart by the separator
-        while (std::getline(line_stream, value, ',')) {
-          // Update the current frame rate, if there are multiple we just take the latest
-          if (value._Starts_with("frame-rate=")) {
-            // TODO I think this should be limited to 9999 eventually - no more than 4 digits
-            s64 frame_rate = std::stoi(value.substr(std::string("frame-rate=").size()));
-
-            if (frame_rate >= 0) {
-              command.frame_rate = frame_rate;
-            }
-          }
-
-          // Update the skip spool movie settings, if there are multiple we just take the latest
-          if (value._Starts_with("skip-spool-movies=")) {
-            // TODO With proper error checking make this either "true" or "false" to be valid
-            command.skip_spool_movies =
-                value.substr(std::string("skip-spool-movies=").size()) == "true";
-          }
-        }
-
-        frame_commands.push_back(command);
-
-        continue;
-      }
-
-      // Set defaults for the first frame, and carry existing positions for the next
-      if (frame_inputs.size() == 0) {
-        input.start_frame = 1;
-        input.end_frame = 0;
-        input.leftx = 128;
-        input.lefty = 128;
-        input.rightx = 128;
-        input.righty = 128;
-      } else {
-        size_t lastIndex = frame_inputs.size() - 1;
-        input.start_frame = frame_inputs[lastIndex].end_frame + 1;
-        input.end_frame = 0;
-        input.leftx = frame_inputs[lastIndex].leftx;
-        input.lefty = frame_inputs[lastIndex].lefty;
-        input.rightx = frame_inputs[lastIndex].rightx;
-        input.righty = frame_inputs[lastIndex].righty;
-      }
-
-      input.button0 = 0;
 
       // Break the line apart by the separator
       while (std::getline(line_stream, value, ',')) {
         if (index == 0) {
-          uint16_t frame_count = std::stoi(value);
+          try {
+            u64 frame_count = std::stoul(value);
 
-          // TODO This is a quick catch for empty/invalid lines, stoi seems to return -1 and we
-          // don't want to run inputs for zero frames (but they might be there during testing)
-          if (frame_count > 0) {
-            input.end_frame = input.start_frame + frame_count - 1;
-          } else {
+            // 0 frames are valid lines, but we don't do anything with them
+            if (frame_count == 0) {
+              break;
+            }
+
+            // Set defaults for the first index, and carry only directions for the rest
+            if (frame_inputs.size() == 0) {
+              frame_inputs.push_back({.start_frame = 1,
+                                      .end_frame = frame_count,
+                                      .button0 = 0,
+                                      .leftx = 128,
+                                      .lefty = 128,
+                                      .rightx = 128,
+                                      .righty = 128});
+            } else {
+              size_t last_index = frame_inputs.size() - 1;
+              frame_inputs.push_back({.start_frame = frame_inputs[last_index].end_frame + 1,
+                                      .end_frame = frame_inputs[last_index].end_frame + frame_count,
+                                      .button0 = 0,
+                                      .leftx = frame_inputs[last_index].leftx,
+                                      .lefty = frame_inputs[last_index].lefty,
+                                      .rightx = frame_inputs[last_index].rightx,
+                                      .righty = frame_inputs[last_index].righty});
+            }
+          } catch (...) {
+            lg::warn("[TAS Input Error] Ignoring invalid line, it might be a comment: " + raw_line);
+
             break;
           }
         } else {
           // Match buttons by their names
           for (auto button : gamepad_map) {
             if (button.first == value) {
-              input.button0 += std::pow(2, static_cast<int>(button.second));
+              frame_inputs[frame_inputs.size() - 1].button0 +=
+                  std::pow(2, static_cast<int>(button.second));
               break;
             }
           }
 
-          // Get the stick positions, if there are multiple we just take the latest
-          if (value._Starts_with("leftx=")) {
-            uint16_t position = std::stoi(value.substr(std::string("leftx=").size()));
+          try {
+            InputValue pair =
+                get_input_value_from_field(value, {"leftx", "lefty", "rightx", "righty"});
 
-            if (position >= 0 && position <= 255) {
-              input.leftx = position;
+            // Get the stick positions
+            if (pair.key == "leftx") {
+              frame_inputs[frame_inputs.size() - 1].leftx = std::stoul(pair.value);
+            } else if (pair.key == "lefty") {
+              frame_inputs[frame_inputs.size() - 1].lefty = std::stoul(pair.value);
+            } else if (pair.key == "rightx") {
+              frame_inputs[frame_inputs.size() - 1].rightx = std::stoul(pair.value);
+            } else if (pair.key == "righty") {
+              frame_inputs[frame_inputs.size() - 1].righty = std::stoul(pair.value);
             }
-          } else if (value._Starts_with("lefty=")) {
-            uint16_t position = std::stoi(value.substr(std::string("lefty=").size()));
-
-            if (position >= 0 && position <= 255) {
-              input.lefty = position;
-            }
-          } else if (value._Starts_with("rightx=")) {
-            uint16_t position = std::stoi(value.substr(std::string("rightx=").size()));
-
-            if (position >= 0 && position <= 255) {
-              input.rightx = position;
-            }
-          } else if (value._Starts_with("righty=")) {
-            uint16_t position = std::stoi(value.substr(std::string("righty=").size()));
-
-            if (position >= 0 && position <= 255) {
-              input.righty = position;
-            }
+          } catch (...) {
+            lg::warn("[TAS Input Error] Ignoring invalid input: " + value);
           }
         }
 
         index += 1;
-      }
-
-      if (input.end_frame > 0) {
-        frame_inputs.push_back(input);
       }
     }
 
@@ -282,14 +296,13 @@ void load_tas_inputs(std::string file_name = "") {
 
     frame_input_file.close();
   } else {
-    lg::debug("Failed to open inputs. " +
+    lg::error("[TAS Input Error] Failed to open inputs. " +
               (file_name.size() == 0
-                   ? "Make sure to create a main" + frame_inputs_file_extension +
-                         " file in \"jak-project/" + frame_inputs_folder_path +
+                   ? "Make sure to create a " + frame_inputs_main_file_name +
+                         frame_inputs_file_extension + " file in \"jak-project/" +
+                         frame_inputs_folder_path +
                          "\" to get started! You can just copy one of the existing " +
-                         frame_inputs_file_extension +
-                         " files "
-                         "to test it."
+                         frame_inputs_file_extension + " files to test it."
                    : "File " + file_name + frame_inputs_file_extension + " not found in " +
                          frame_inputs_folder_path));
   }
