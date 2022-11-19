@@ -124,7 +124,8 @@ InputValue get_input_value_from_field(std::string value, std::vector<std::string
     }
   }
 
-  throw std::runtime_error("Invalid field");
+  // throw std::runtime_error("Invalid field");
+  return {.key = "", .value = ""};
 }
 
 u8 get_input_bool(std::string value) {
@@ -132,7 +133,8 @@ u8 get_input_bool(std::string value) {
     return value == "true" ? 1 : 0;
   }
 
-  throw std::runtime_error("Invalid bool");
+  // throw std::runtime_error("Invalid bool");
+  return 0;
 }
 
 // TODO This shouldn't be adding to a global var, should just import and return
@@ -169,44 +171,48 @@ void load_tas_inputs(std::string file_name = "") {
         InputValue pair =
             get_input_value_from_field(line, {"import", "frame-rate", "skip-spool-movies"});
 
-        // Import another tas file, and just read it in like it was originally part of this file
-        if (pair.key == "import") {
-          // TODO Some protection against cyclical imports maybe?
-          // TODO Some protection against file walking
-          load_tas_inputs(pair.value);
+        if (pair.key != "") {
+          // Import another tas file, and just read it in like it was originally part of this file
+          if (pair.key == "import") {
+            // TODO Some protection against cyclical imports maybe?
+            // TODO Some protection against file walking
+            load_tas_inputs(pair.value);
+
+            continue;
+          }
+
+          // Set defaults for the first index, and carry commands for the rest
+          if (frame_commands.size() == 0) {
+            frame_commands.push_back({.frame_index = 1, .frame_rate = 60, .skip_spool_movies = 0});
+          } else {
+            // Use the latest frame from the inputs for the command
+            size_t inputs_size = frame_inputs.size();
+            u64 frame_index = inputs_size == 0 ? 1 : frame_inputs[inputs_size - 1].end_frame + 1;
+            size_t last_index = frame_commands.size() - 1;
+
+            // Multiple commands in a row will have the same frame so don't create another
+            if (frame_index != frame_commands[last_index].frame_index) {
+              FrameCommands command;
+              memcpy(&command, &frame_commands[last_index], sizeof(frame_commands[last_index]));
+              command.frame_index = frame_index;
+              frame_commands.push_back(command);
+            }
+          }
+
+          if (pair.key == "frame-rate") {
+            frame_commands[frame_commands.size() - 1].frame_rate = std::stoul(pair.value);
+          } else if (pair.key == "skip-spool-movies") {
+            frame_commands[frame_commands.size() - 1].skip_spool_movies =
+                get_input_bool(pair.value);
+          } else {
+            // If we reach here we passed something in the valid commands list but didn't handle it,
+            // the only real case this could happen is if we added a new field and forgot to
+            // implement
+            lg::warn("[TAS Input Error] Valid command not implemented: " + raw_line);
+          }
 
           continue;
         }
-
-        // Set defaults for the first index, and carry commands for the rest
-        if (frame_commands.size() == 0) {
-          frame_commands.push_back({.frame_index = 1, .frame_rate = 60, .skip_spool_movies = 0});
-        } else {
-          // Use the latest frame from the inputs for the command
-          size_t inputs_size = frame_inputs.size();
-          u64 frame_index = inputs_size == 0 ? 1 : frame_inputs[inputs_size - 1].end_frame + 1;
-          size_t last_index = frame_commands.size() - 1;
-
-          // Multiple commands in a row will have the same frame so don't create another
-          if (frame_index != frame_commands[last_index].frame_index) {
-            FrameCommands command;
-            memcpy(&command, &frame_commands[last_index], sizeof(frame_commands[last_index]));
-            command.frame_index = frame_index;
-            frame_commands.push_back(command);
-          }
-        }
-
-        if (pair.key == "frame-rate") {
-          frame_commands[frame_commands.size() - 1].frame_rate = std::stoul(pair.value);
-        } else if (pair.key == "skip-spool-movies") {
-          frame_commands[frame_commands.size() - 1].skip_spool_movies = get_input_bool(pair.value);
-        } else {
-          // If we reach here we passed something in the valid commands list but didn't handle it,
-          // the only real case this could happen is if we added a new field and forgot to implement
-          lg::warn("[TAS Input Error] Valid command not implemented: " + raw_line);
-        }
-
-        continue;
       } catch (...) {
         // Intentionally left empty. We throw line errors down in the input frame number check
       }
