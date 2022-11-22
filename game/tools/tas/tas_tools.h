@@ -36,7 +36,7 @@ struct TASInput {
   // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
   std::string toString() {
     return "@^" + std::string("\"first_frame\": \"") + std::to_string(first_frame) + "\"," +
-           std::string("\"file_name\": \"") + std::string(file_name) + "\"," +
+           std::string("\"last_frame\": \"") + std::to_string(last_frame) + "\"," +
            std::string("\"file_name\": \"") + std::string(file_name) + "\"," +
            std::string("\"file_line\": \"") + std::to_string(file_line) + "\"," +
            std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +

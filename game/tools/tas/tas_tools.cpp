@@ -42,7 +42,7 @@ TASInputFrameGOAL tas_read_current_frame() {
   // If we're not running a TAS (or just finished it) reset to empty
   return {.tas_frame = 0,
           .frame_rate = 60,
-          .skip_spool_movies = 1,
+          .skip_spool_movies = 0,
           .button0 = 0,
           .player_angle = 0,
           .player_speed = 0,
@@ -63,11 +63,41 @@ void tas_update_goal_input_frame() {
   *Ptr<TASInputFrameGOAL>(tas_input_frame_goal_ptr).c() = tas_read_current_frame();
 
   jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_input_frame_goal_ptr;
+
+  // If TAS is enabled we take over the controller, until it's finished or cancelled
+  if (tas_input_frame > 0 && tas_input_index < tas_inputs.size()) {
+    auto input = tas_inputs[tas_input_index];
+
+    // Handle commands on the first frame of the input
+    if (tas_input_frame == input.first_frame) {
+      if (Gfx::get_frame_rate() != input.frame_rate) {
+        Gfx::set_frame_rate(input.frame_rate);
+      }
+    }
+  }
+}
+
+void tas_end_inputs() {
+  tas_input_frame = 0;
+  tas_input_index = 0;
+  tas_update_goal_input_frame();
+  Gfx::set_frame_rate(60);
+  lg::debug("[TAS Playback] TAS complete.");
 }
 
 void tas_update_frame_results() {
-  // lg::debug("[TAS Playback] Finished frame " + std::to_string(tas_input_frame));
-  ++tas_input_frame;
+  if (tas_input_frame > 0 && tas_input_index < tas_inputs.size()) {
+    // lg::debug("[TAS Playback] Finished frame " + std::to_string(tas_input_frame));
+    ++tas_input_frame;
+
+    if (tas_input_frame >= tas_inputs[tas_input_index].last_frame) {
+      ++tas_input_index;
+
+      if (tas_input_index >= tas_inputs.size()) {
+        tas_end_inputs();
+      }
+    }
+  }
 }
 
 const TASKeyValue tas_read_line_key_value(std::string line, std::vector<std::string> types) {
@@ -98,15 +128,18 @@ void tas_add_new_input_if_needed(std::string file_name, u64 file_line) {
   // If the last input was a command we can edit the last input rather than making a new one
   if (last_input_had_frame_data) {
     size_t last_input_index = tas_inputs.size() - 1;
-
-    TASInput new_input;
-    memcpy(&new_input, &tas_inputs[last_input_index], sizeof(tas_inputs[last_input_index]));
-    new_input.first_frame = tas_inputs[last_input_index].last_frame + 1;
-    new_input.last_frame = tas_inputs[last_input_index].last_frame + 1;
-    new_input.button0 = 0;
-    new_input.file_name = file_name;
-    new_input.file_line = file_line;
-    tas_inputs.push_back(new_input);
+    last_input_had_frame_data = false;
+    tas_inputs.push_back({.first_frame = tas_inputs[last_input_index].last_frame + 1,
+                          .last_frame = tas_inputs[last_input_index].last_frame + 1,
+                          .file_name = file_name,
+                          .file_line = file_line,
+                          .frame_rate = tas_inputs[last_input_index].frame_rate,
+                          .skip_spool_movies = tas_inputs[last_input_index].skip_spool_movies,
+                          .button0 = 0,
+                          .player_angle = tas_inputs[last_input_index].player_angle,
+                          .player_speed = tas_inputs[last_input_index].player_speed,
+                          .camera_angle = tas_inputs[last_input_index].camera_angle,
+                          .camera_zoom = tas_inputs[last_input_index].camera_zoom});
   }
 }
 
@@ -133,24 +166,13 @@ void tas_load_inputs(std::string file_name) {
   std::string raw_line;
   u64 file_line = 0;
 
-  // Set up first line with default values
-  tas_inputs.clear();
-  tas_inputs.push_back({.first_frame = 1,
-                        .last_frame = 1,
-                        .file_name = file_name,
-                        .file_line = file_line,
-                        .frame_rate = 60,
-                        .skip_spool_movies = 0,
-                        .button0 = 0,
-                        .player_angle = 0,
-                        .player_speed = 0,
-                        .camera_angle = 0,
-                        .camera_zoom = 0});
-
   // Read each line in the file
   while (std::getline(inputs_file, raw_line)) {
     std::string line = raw_line;
     ++file_line;
+
+    // lg::debug("[TAS Input] Reading File: " + file_name + " - Line: " + std::to_string(file_line)
+    // + " - " + raw_line);
 
     // Remove all whitespace from the line
     line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
@@ -159,10 +181,6 @@ void tas_load_inputs(std::string file_name) {
     if (line.size() == 0 || line._Starts_with("#")) {
       continue;
     }
-
-    // Use the latest frame from the inputs for the command
-    size_t inputs_size = tas_inputs.size();
-    size_t last_input_index = inputs_size - 1;
 
     // Handle all of the special commands
     TASKeyValue pair = tas_read_line_key_value(line, {"import", "frame-rate", "skip-spool-movies"});
@@ -173,17 +191,13 @@ void tas_load_inputs(std::string file_name) {
         // TODO Some protection against cyclical imports maybe?
         // TODO Some protection against file walking
         tas_load_inputs(pair.value);
-
-        continue;
-      }
-
-      if (pair.key == "frame-rate") {
+      } else if (pair.key == "frame-rate") {
         tas_add_new_input_if_needed(file_name, file_line);
         // TODO Check this differently, throwing an exception will crash even if it's caught
-        tas_inputs[last_input_index].frame_rate = std::stoul(pair.value);
+        tas_inputs[tas_inputs.size() - 1].frame_rate = std::stoul(pair.value);
       } else if (pair.key == "skip-spool-movies") {
         tas_add_new_input_if_needed(file_name, file_line);
-        tas_inputs[last_input_index].skip_spool_movies = tas_get_input_bool(pair.value);
+        tas_inputs[tas_inputs.size() - 1].skip_spool_movies = tas_get_input_bool(pair.value);
       }
 
       continue;
@@ -214,14 +228,15 @@ void tas_load_inputs(std::string file_name) {
         }
 
         tas_add_new_input_if_needed(file_name, file_line);
-        tas_inputs[last_input_index].last_frame += frame_count - 1;
+        tas_inputs[tas_inputs.size() - 1].last_frame += frame_count - 1;
       } else {
         bool matched_button = false;
 
         // Match buttons by their names
         for (auto button : gamepad_map) {
           if (button.first == field) {
-            tas_inputs[last_input_index].button0 += std::pow(2, static_cast<int>(button.second));
+            tas_inputs[tas_inputs.size() - 1].button0 +=
+                std::pow(2, static_cast<int>(button.second));
             matched_button = true;
             break;
           }
@@ -235,34 +250,26 @@ void tas_load_inputs(std::string file_name) {
           // Get the target directions
           // TODO Check this differently, throwing an exception will crash even if it's caught
           if (pair.key == "player-angle") {
-            tas_inputs[last_input_index].player_angle = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].player_angle = std::stoul(pair.value);
           } else if (pair.key == "player-speed") {
-            tas_inputs[last_input_index].player_speed = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].player_speed = std::stoul(pair.value);
           } else if (pair.key == "camera-angle") {
-            tas_inputs[last_input_index].camera_angle = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].camera_angle = std::stoul(pair.value);
           } else if (pair.key == "camera-zoom") {
-            tas_inputs[last_input_index].camera_zoom = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].camera_zoom = std::stoul(pair.value);
           } else {
-            // If we reach here we passed something in the valid commands list but didn't handle it,
-            // the only case this should happen is if we added a new field and forgot to implement
+            // If we reach here we passed something in the valid commands list but didn't handle
+            // it, the only case this should happen is if we added a new field and forgot to
+            // implement
             lg::warn("[TAS Input] Skipping unhandled field: " + field);
           }
         }
       }
 
+      last_input_had_frame_data = true;
       ++field_index;
     }
   }
-
-  // std::string frame_commands_display;
-  // for (auto& piece : frame_commands)
-  //   frame_commands_display += piece.toString() + ", ";
-  // lg::debug("TAS COMMANDS: " + frame_commands_display);
-
-  // std::string frame_inputs_display;
-  // for (auto& piece : frame_inputs)
-  //   frame_inputs_display += piece.toString() + ", ";
-  // lg::debug("TAS INPUTS: " + frame_inputs_display);
 
   inputs_file.close();
 }
@@ -272,7 +279,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
   // presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L2)) &&
       tas_recording_inputs.size() == 0) {
-    lg::debug("Starting recording ...");
+    lg::debug("[TAS Recording] Starting recording ...");
 
     // FrameInputs input;
 
@@ -287,7 +294,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
   // presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::R2)) &&
       tas_recording_inputs.size() != 0) {
-    lg::debug("Ending recording");
+    lg::debug("[TAS Recording] Ending recording");
 
     std::ofstream frame_output_file;
     u64 index = 0;
@@ -359,49 +366,45 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3)) &&
       tas_recording_inputs.size() == 0) {
     lg::debug("[TAS Playback] Starting TAS ...");
+
+    // Set up first input with default values
+    tas_inputs.clear();
+    tas_inputs.push_back({.first_frame = 1,
+                          .last_frame = 1,
+                          .file_name = tas_main_file_name,
+                          .file_line = 1,
+                          .frame_rate = 60,
+                          .skip_spool_movies = 0,
+                          .button0 = 0,
+                          .player_angle = 0,
+                          .player_speed = 0,
+                          .camera_angle = 0,
+                          .camera_zoom = 0});
+    last_input_had_frame_data = false;
+    tas_input_frame = 1;
+    tas_input_index = 0;
     tas_load_inputs(tas_main_file_name);
+    tas_update_goal_input_frame();
+
+    // std::string inputs_display;
+    // for (auto& input : tas_inputs)
+    //   inputs_display += input.toString() + ", ";
+    // lg::debug("TAS INPUTS: " + inputs_display);
 
     if (tas_inputs.size() == 0) {
       lg::debug("[TAS Playback] No valid inputs, start cancelled.");
+      tas_end_inputs();
     } else {
-      tas_input_frame = 1;
-      tas_input_index = 0;
       lg::debug("[TAS Playback] Inputs loaded!");
     }
   }
 
   // Use Triangle to disable the TAS. Automatically disabled if we reach the end. This isn't a
   // toggle to avoid multi frame button presses
-  if ((tas_input_index >= tas_inputs.size() ||
-       cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle))) &&
+  if ((cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::Triangle))) &&
       tas_input_frame > 0) {
     lg::debug("[TAS Playback] Ending TAS ...");
-    tas_input_frame = 0;
-    tas_input_index = 0;
-    Gfx::set_frame_rate(60);
-    lg::debug("[TAS Playback] TAS complete.");
-  }
-
-  // If TAS is enabled we take over the controller, until it's finished or cancelled
-  if (tas_input_frame > 0) {
-    cpad->button0 = 0;
-
-    if (tas_input_index < tas_inputs.size()) {
-      auto input = tas_inputs[tas_input_index];
-
-      // Handle commands on the first frame of the input
-      if (tas_input_frame == input.first_frame) {
-        if (Gfx::get_frame_rate() != input.frame_rate) {
-          Gfx::set_frame_rate(input.frame_rate);
-        }
-      }
-
-      cpad->button0 = input.button0;
-
-      if (tas_input_frame == input.last_frame) {
-        ++tas_input_index;
-      }
-    }
+    tas_end_inputs();
   }
 }
 }  // namespace TAS

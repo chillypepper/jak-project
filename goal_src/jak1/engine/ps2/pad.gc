@@ -311,6 +311,11 @@
                  )
                )
              )
+           ;; only run the tas for the first pad
+           (if (and (= (-> pad number) 0) (!= (-> *pc-tas-input-frame* tas-frame) 0))
+             (set! (-> pad button0) (-> *pc-tas-input-frame* button0))
+             )
+
            ;; update button history.
            (set! (-> pad button0-abs 2) (-> pad button0-abs 1))
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
@@ -330,7 +335,8 @@
              )
 
            (cond
-             ((= (-> *pc-tas-input-frame* tas-frame) 0)
+             ;; only run the tas for the first pad
+             ((or (!= (-> pad number) 0) (= (-> *pc-tas-input-frame* tas-frame) 0))
               ;; compute a speed and direction for stick0
               (set! (-> pad stick0-speed) 1.0)
               (cond
@@ -378,6 +384,7 @@
                 )
 
               (set! (-> pad stick0-speed) (-> *pc-tas-input-frame* player-speed))
+              (set! (-> pad button0) (-> *pc-tas-input-frame* button0))
               )
             )
            ;; if the pad was changed or stick0 pushed, update the last changed time.
