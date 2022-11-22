@@ -647,7 +647,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
   // TAS functions
-  make_function_symbol_from_c("pc-tas-read-current-frame", (void*)TAS::tas_read_current_frame);
+  make_function_symbol_from_c("pc-tas-update-goal-input-frame",
+                              (void*)TAS::tas_update_goal_input_frame);
   make_function_symbol_from_c("pc-tas-update-frame-results", (void*)TAS::tas_update_frame_results);
 
   // init ps2 VM

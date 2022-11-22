@@ -276,8 +276,6 @@
 
 (defun service-cpads ()
   "Read from cpads and update vibration"
-  ;; (set! *pc-tas-input-frame* (pc-tas-read-current-frame))
-
   ;; iterate over pads
   (let ((pad-list *cpad-list*))
     (dotimes (pad-idx (-> pad-list num-cpads))
@@ -375,15 +373,12 @@
 
               ;; Set the calculated direction (accounting for mirror mode) and movement speed
               (if (pc-cheats? (-> *pc-settings* cheats) mirror)
-                (set! (-> pad stick0-dir) (string->float "18000"))
-                (set! (-> pad stick0-dir) (- 65536.0 (string->float "18000")))
+                (set! (-> pad stick0-dir) (the float (-> *pc-tas-input-frame* player-angle)))
+                (set! (-> pad stick0-dir) (- 65536.0 (the float (-> *pc-tas-input-frame* player-angle))))
                 )
+
+              (set! (-> pad stick0-speed) (-> *pc-tas-input-frame* player-speed))
               )
-              
-              (set! (-> pad stick0-speed) (string->float "0.6"))
-              (if (< (-> pad stick0-speed) STICK_DEADZONE)
-                  (set! (-> pad stick0-speed) 0.0)
-                  )
             )
            ;; if the pad was changed or stick0 pushed, update the last changed time.
            (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))

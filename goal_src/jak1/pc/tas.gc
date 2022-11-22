@@ -5,21 +5,36 @@
 
 ;; Also copied into TASInputFrameGOAL in tas_tools.h
 (deftype tas-input-frame (structure)
-  ((tas-frame uint64  :offset-assert 0)
-   (frame-rate uint16 :offset-assert 8)
-   (skip-spool-movies uint16  :offset-assert 10)
-   (button0 uint16  :offset-assert 12)
-   (player_angle   uint16  :offset-assert 14)
-   (player_speed   float  :offset-assert 16)
-   (camera_zoom   float  :offset-assert 20)
-   (camera_angle   uint16  :offset-assert 24)
+  ((tas-frame         uint64 :offset-assert  0)
+   (frame-rate        uint16 :offset-assert  8)
+   (skip-spool-movies uint16 :offset-assert 10)
+   (button0           uint16 :offset-assert 12)
+   (player-angle      uint16 :offset-assert 14)
+   (player-speed      float  :offset-assert 16)
+   (camera-zoom       float  :offset-assert 20)
+   (camera-angle      uint16 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1A
   :flag-assert         #x90000001A
   )
 
-(define-extern pc-tas-read-current-frame (function tas-input-frame))
+;; Also copied into TASInputFrameResultsGOAL in tas_tools.h
+(deftype tas-input-frame-results (structure)
+  ((tas-frame     uint64 :offset-assert  0)
+   (new-fuel-cell uint16 :offset-assert  8)
+   (new-money     uint16 :offset-assert 10)
+   (new-buzzer    uint16 :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x0E
+  :flag-assert         #x90000000E
+  )
+
+;; These functions get the inputs for the current frame and update the frame progress if necessary
+(define-extern pc-tas-update-goal-input-frame (function none))
 (define-extern pc-tas-update-frame-results (function none))
 
+;; NOTE These two values are actually pointers shared between C++ and GOAL, see tas_tools.h for most of the implementation!
 (define-extern *pc-tas-input-frame* tas-input-frame)
+(define-extern *pc-tas-input-frame-results* tas-input-frame-results)

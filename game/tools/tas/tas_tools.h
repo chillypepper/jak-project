@@ -65,8 +65,8 @@ struct TASInputFrameGOAL {
 const std::string tas_folder_path = "tas/jak1/";
 const std::string tas_main_file_name = "main";
 const std::string tas_file_extension = ".jaktas";
-const std::string tas_results_file_extension = ".results" + tas_file_extension;
 const std::string tas_recording_file_extension = ".recording" + tas_file_extension;
+const std::string tas_results_file_extension = ".results" + tas_file_extension;
 
 const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
                                                            {"L3", Pad::Button::L3},
@@ -86,10 +86,7 @@ const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Butto
                                                            {"Square", Pad::Button::Square}};
 
 // Functions for managing the TAS
-void tas_init();
+void tas_update_goal_input_frame();
 void tas_handle_pad_inputs(CPadInfo* cpad);
-
-// Functions for getting data too and from GOAL
-TASInputFrameGOAL tas_read_current_frame();
 void tas_update_frame_results();
 }  // namespace TAS

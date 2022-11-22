@@ -94,7 +94,8 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
     cpad->new_pad = 1;
     cpad->state = 0;
   }
-  TAS::tas_init();
+  // Kick off the TAS once before the pad starts reading so we're guaranteed to have valid data
+  TAS::tas_update_goal_input_frame();
   return cpad_info;
 }
 

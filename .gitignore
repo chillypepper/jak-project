@@ -62,4 +62,5 @@ __pycache__/
 
 # tas content
 tas/**/main.jaktas
-tas/**/*.output.jaktas
+tas/**/*.recording.jaktas
+tas/**/*.results.jaktas

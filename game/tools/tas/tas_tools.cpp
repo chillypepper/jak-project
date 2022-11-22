@@ -9,6 +9,9 @@
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/Ptr.h"
 
+// Keep references to the structs shared with GOAL
+u64 tas_input_frame_goal_ptr = 0;
+
 // Track our inputs for both playbacks and recordings
 std::vector<TAS::TASInput> tas_inputs;
 std::vector<TAS::TASInput> tas_recording_inputs;
@@ -26,13 +29,44 @@ TASInputFrameGOAL tas_read_current_frame() {
   if (tas_input_frame > 0 && tas_input_index < tas_inputs.size()) {
     auto input = tas_inputs[tas_input_index];
 
-    return {tas_input_frame,    input.frame_rate,   input.skip_spool_movies, input.button0,
-            input.player_angle, input.player_speed, input.camera_zoom,       input.camera_angle};
+    return {.tas_frame = tas_input_frame,
+            .frame_rate = input.frame_rate,
+            .skip_spool_movies = input.skip_spool_movies,
+            .button0 = input.button0,
+            .player_angle = input.player_angle,
+            .player_speed = input.player_speed,
+            .camera_zoom = input.camera_zoom,
+            .camera_angle = input.camera_angle};
   }
+
+  // If we're not running a TAS (or just finished it) reset to empty
+  return {.tas_frame = 0,
+          .frame_rate = 60,
+          .skip_spool_movies = 1,
+          .button0 = 0,
+          .player_angle = 0,
+          .player_speed = 0,
+          .camera_zoom = 0,
+          .camera_angle = 0};
 };
 
+// Update the shared pointer with the inputs for the current frame
+void tas_update_goal_input_frame() {
+  // Copied and changed behaviour from jak1::make_string_from_c
+  // NOTE There's no check for failed allocation here!
+  if (tas_input_frame_goal_ptr == 0) {
+    tas_input_frame_goal_ptr = jak1::alloc_heap_object(
+        (s7 + jak1_symbols::FIX_SYM_GLOBAL_HEAP).offset, *(s7 + jak1_symbols::FIX_SYM_STRING_TYPE),
+        sizeof(TASInputFrameGOAL) + BASIC_OFFSET + 4, UNKNOWN_PP);
+  }
+
+  *Ptr<TASInputFrameGOAL>(tas_input_frame_goal_ptr).c() = tas_read_current_frame();
+
+  jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_input_frame_goal_ptr;
+}
+
 void tas_update_frame_results() {
-  lg::debug("[TAS Playback] Finished frame " + std::to_string(tas_input_frame));
+  // lg::debug("[TAS Playback] Finished frame " + std::to_string(tas_input_frame));
   ++tas_input_frame;
 }
 
@@ -78,7 +112,6 @@ void tas_add_new_input_if_needed(std::string file_name, u64 file_line) {
 
 // TODO This shouldn't be adding to a global var, should just import and return
 void tas_load_inputs(std::string file_name) {
-  return;
   // First load the file contents, we'll be reading line by line
   const std::string full_file_name = tas_folder_path +
                                      (file_name.size() == 0 ? tas_main_file_name : file_name) +
@@ -183,34 +216,41 @@ void tas_load_inputs(std::string file_name) {
         tas_add_new_input_if_needed(file_name, file_line);
         tas_inputs[last_input_index].last_frame += frame_count - 1;
       } else {
+        bool matched_button = false;
+
         // Match buttons by their names
         for (auto button : gamepad_map) {
           if (button.first == field) {
             tas_inputs[last_input_index].button0 += std::pow(2, static_cast<int>(button.second));
+            matched_button = true;
             break;
           }
         }
 
-        TASKeyValue pair = tas_read_line_key_value(
-            field, {"player_angle", "player_speed", "camera_angle", "camera_zoom"});
+        // Look for other input options if we didn't match one of the buttons
+        if (!matched_button) {
+          TASKeyValue pair = tas_read_line_key_value(
+              field, {"player-angle", "player-speed", "camera-angle", "camera-zoom"});
 
-        // Get the target directions
-        if (pair.key == "player_angle") {
-          tas_inputs[tas_inputs.size() - 1].player_angle = std::stoul(pair.value);
-        } else if (pair.key == "player_speed") {
-          tas_inputs[tas_inputs.size() - 1].player_speed = std::stoul(pair.value);
-        } else if (pair.key == "camera_angle") {
-          tas_inputs[tas_inputs.size() - 1].camera_angle = std::stoul(pair.value);
-        } else if (pair.key == "camera_zoom") {
-          tas_inputs[tas_inputs.size() - 1].camera_zoom = std::stoul(pair.value);
-        } else {
-          // If we reach here we passed something in the valid commands list but didn't handle it,
-          // the only case this should happen is if we added a new field and forgot to implement
-          lg::warn("[TAS Input] Skipping unhandled field: " + raw_line);
+          // Get the target directions
+          // TODO Check this differently, throwing an exception will crash even if it's caught
+          if (pair.key == "player-angle") {
+            tas_inputs[last_input_index].player_angle = std::stoul(pair.value);
+          } else if (pair.key == "player-speed") {
+            tas_inputs[last_input_index].player_speed = std::stoul(pair.value);
+          } else if (pair.key == "camera-angle") {
+            tas_inputs[last_input_index].camera_angle = std::stoul(pair.value);
+          } else if (pair.key == "camera-zoom") {
+            tas_inputs[last_input_index].camera_zoom = std::stoul(pair.value);
+          } else {
+            // If we reach here we passed something in the valid commands list but didn't handle it,
+            // the only case this should happen is if we added a new field and forgot to implement
+            lg::warn("[TAS Input] Skipping unhandled field: " + field);
+          }
         }
       }
 
-      field_index += 1;
+      ++field_index;
     }
   }
 
@@ -227,31 +267,7 @@ void tas_load_inputs(std::string file_name) {
   inputs_file.close();
 }
 
-// Mostly copied from jak1::make_string_from_c
-u64 tas_init_goal_frame_data() {
-  auto mem = jak1::alloc_heap_object((s7 + jak1_symbols::FIX_SYM_GLOBAL_HEAP).offset,
-                                     *(s7 + jak1_symbols::FIX_SYM_STRING_TYPE),
-                                     sizeof(TASInputFrameGOAL) + BASIC_OFFSET + 4, UNKNOWN_PP);
-  // there's no check for failed allocation here!
-
-  *Ptr<u64>(mem + offsetof(TASInputFrameGOAL, tas_frame)).c() = 0;
-  *Ptr<u16>(mem + offsetof(TASInputFrameGOAL, frame_rate)).c() = 60;
-  *Ptr<u16>(mem + offsetof(TASInputFrameGOAL, skip_spool_movies)).c() = 1;
-  *Ptr<u16>(mem + offsetof(TASInputFrameGOAL, button0)).c() = 0;
-  *Ptr<u16>(mem + offsetof(TASInputFrameGOAL, player_angle)).c() = 0;
-  *Ptr<float>(mem + offsetof(TASInputFrameGOAL, player_speed)).c() = 0;
-  *Ptr<float>(mem + offsetof(TASInputFrameGOAL, camera_zoom)).c() = 0;
-  *Ptr<u16>(mem + offsetof(TASInputFrameGOAL, camera_angle)).c() = 0;
-
-  return mem;
-}
-
-void tas_init() {
-  jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_init_goal_frame_data();
-}
-
 void tas_handle_pad_inputs(CPadInfo* cpad) {
-  return;
   // Use L2 to enable recording inputs. This isn't a toggle to avoid multi frame button
   // presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L2)) &&
@@ -285,16 +301,16 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
         std::string controls =
             std::string("") +
             (index == 1 || tas_recording_inputs[index - 1].player_angle != input.player_angle
-                 ? ",player_angle=" + std::to_string(input.player_angle)
+                 ? ",player-angle=" + std::to_string(input.player_angle)
                  : "") +
             (index == 1 || tas_recording_inputs[index - 1].player_speed != input.player_speed
-                 ? ",player_speed=" + std::to_string(input.player_speed)
+                 ? ",player-speed=" + std::to_string(input.player_speed)
                  : "") +
             (index == 1 || tas_recording_inputs[index - 1].camera_angle != input.camera_angle
-                 ? ",camera_angle=" + std::to_string(input.camera_angle)
+                 ? ",camera-angle=" + std::to_string(input.camera_angle)
                  : "") +
             (index == 1 || tas_recording_inputs[index - 1].camera_zoom != input.camera_zoom
-                 ? ",camera_zoom=" + std::to_string(input.camera_zoom)
+                 ? ",camera-zoom=" + std::to_string(input.camera_zoom)
                  : "");
 
         for (auto button : gamepad_map) {
@@ -323,7 +339,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
     //     tas_recording_inputs[lastIndex].lefty == cpad->lefty &&
     //     tas_recording_inputs[lastIndex].rightx == cpad->rightx &&
     //     tas_recording_inputs[lastIndex].righty == cpad->righty) {
-    //   tas_recording_inputs[lastIndex].last_frame += 1;
+    //   ++tas_recording_inputs[lastIndex].last_frame;
     // } else {
     //   FrameInputs input;
 

@@ -19,10 +19,16 @@
   (set! (-> *setting-control* default play-hints) #f)
   ;; ensure `force actors` is not enabled
   (set! (-> *pc-settings* force-actors?) #f)
-  ;; force FPS to `60`
-  (set-frame-rate! *pc-settings* 60)
-  ;; reset the seed for consistent rng
-  (rand-vu-init 1.418091058731079)
+  (cond
+    ((= (-> *pc-tas-input-frame* tas-frame) 0)
+      ;; force FPS to `60`
+      (set-frame-rate! *pc-settings* 60)
+      )
+    (else
+      ;; if we're running a TAS reset the seed for consistent rng, but keep the frame rate
+      (rand-vu-init 1.418091058731079)
+      )
+    )
   ;; skip intro cutscene
   (close-specific-task! (game-task intro) (task-status need-resolution))
   ;; enable auto saving by default

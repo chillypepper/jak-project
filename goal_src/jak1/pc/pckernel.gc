@@ -102,22 +102,18 @@
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
-  (case rate
-    ((rate)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'ntsc)
-      )
-    ((50)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'pal)
-      )
-    ((60)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'ntsc)
+
+  (set! (-> obj target-fps) rate)
+  (cond
+    ((= (-> *pc-tas-input-frame* tas-frame) 0)
+      (case rate
+        ((50) (set! (-> *setting-control* default video-mode) 'pal))
+        ((60) (set! (-> *setting-control* default video-mode) 'ntsc))
+        (else (set! (-> *setting-control* default video-mode) 'custom))
+        )
       )
     (else
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'custom)
+      (set! (-> *setting-control* default video-mode) 'ntsc)
       )
     )
   (set! (-> *setting-control* current video-mode) #f)
@@ -279,6 +275,9 @@
   "Update settings to/from PC kernel. Call this at the start of every frame.
    This will update things like the aspect-ratio, which will be used for graphics code later."
 
+  ;; always fetch the latest TAS frame inputs at the start of the frame
+  (pc-tas-update-goal-input-frame)
+
   (update-from-os obj)
   (update-to-os obj)
 
@@ -381,10 +380,10 @@
   ;; music.
   (update-music-log obj)
 
-  ;; update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
-  ;; (if (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
-  ;;   (pc-tas-update-frame-results)
-  ;;   )
+  ;; only update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
+  (if (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
+    (pc-tas-update-frame-results)
+    )
 
   (none))
 
@@ -499,7 +498,7 @@
           (when (zero? (-> date stat))
             (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
           ))
-  
+
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
 
   ;; run cheats end!!!
