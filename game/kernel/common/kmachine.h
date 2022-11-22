@@ -3,6 +3,7 @@
 #include "common/common_types.h"
 
 #include "game/graphics/gfx.h"
+#include "game/tools/tas/tas_tools.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -83,9 +84,3 @@ u64 pc_get_mips2c(u32 name);
 void send_gfx_dma_chain(u32 /*bank*/, u32 chain);
 void pc_texture_upload_now(u32 page, u32 mode);
 void pc_texture_relocate(u32 dst, u32 src, u32 format);
-
-/*!
- * additional TAS functions
- */
-u64 get_tas_frame();
-u64 get_skip_spool_movies();

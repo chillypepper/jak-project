@@ -1,0 +1,25 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; Functions and data for the custom TAS controls
+
+;; Also copied into TASInputFrameGOAL in tas_tools.h
+(deftype tas-input-frame (structure)
+  ((tas-frame uint64  :offset-assert 0)
+   (frame-rate uint16 :offset-assert 8)
+   (skip-spool-movies uint16  :offset-assert 10)
+   (button0 uint16  :offset-assert 12)
+   (player_angle   uint16  :offset-assert 14)
+   (player_speed   float  :offset-assert 16)
+   (camera_zoom   float  :offset-assert 20)
+   (camera_angle   uint16  :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1A
+  :flag-assert         #x90000001A
+  )
+
+(define-extern pc-tas-read-current-frame (function tas-input-frame))
+(define-extern pc-tas-update-frame-results (function none))
+
+(define-extern *pc-tas-input-frame* tas-input-frame)

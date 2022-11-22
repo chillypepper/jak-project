@@ -997,7 +997,7 @@
                 (ja-no-eval :num! (seek!) :frame-num f0-14)
                 )
               (cond 
-                ((= *skip-spool-movies* 1)
+                ((= (-> *pc-tas-input-frame* skip-spool-movies) 1)
                   (set! v0-39 (the-as int f28-0)))
                 (else
                   (set! v0-39 (current-str-pos spool-sound)))
@@ -1015,7 +1015,7 @@
         )
       )
     (cond 
-      ((= *skip-spool-movies* 1)
+      ((= (-> *pc-tas-input-frame* skip-spool-movies) 1)
         (set! spool-part (-> arg0 parts)))
       (else
         (set! spool-part (+ spool-part 1)))

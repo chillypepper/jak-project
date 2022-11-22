@@ -365,9 +365,6 @@
 (define-extern pc-set-game-resolution (function int int none))
 (define-extern pc-set-msaa (function int none))
 (define-extern pc-set-gfx-hack (function pc-gfx-hack symbol none))
-(define-extern pc-get-tas-frame (function uint))
-(define-extern pc-get-frame-rate (function uint))
-(define-extern pc-get-skip-spool-movies (function uint))
 
 (define-extern pc-get-unix-timestamp (function int))
 

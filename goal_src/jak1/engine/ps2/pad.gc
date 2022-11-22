@@ -14,9 +14,6 @@
 (define-extern get-current-time (function time-frame))
 (define-extern get-integral-current-time (function time-frame))
 
-;; in settings, but we haven't gotten to settings-h.gc yet.
-(define-extern *pc-tas-frame* uint)
-
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -279,15 +276,14 @@
 
 (defun service-cpads ()
   "Read from cpads and update vibration"
+  ;; (set! *pc-tas-input-frame* (pc-tas-read-current-frame))
+
   ;; iterate over pads
   (let ((pad-list *cpad-list*))
     (dotimes (pad-idx (-> pad-list num-cpads))
       (let ((pad (-> *cpad-list* cpads pad-idx)))
         ;; read from hardware.
-        ;; TODO We only do this when a cutscene isn't playing to get accurate frame timings for the TAS
-        (if (or (= *pc-tas-frame* 0) (not (-> *pc-settings* movie?)))
-          (cpad-get-data pad)
-          )
+        (cpad-get-data pad)
         (cond
           ((zero? (logand (-> pad valid) 128))
            (dotimes (buzz-idx 2)
@@ -335,38 +331,60 @@
              (set! (-> pad rightx) (the-as uint 255))
              )
 
-           ;; compute a speed and direction for stick0
-           (set! (-> pad stick0-speed) 1.0)
            (cond
-             ;; check if controller is a valid dualshock 2
-             ((= (shr (-> pad status) 4) 7)
-              ;; invert analogs if mirrored mode. trust me, you'll need this.
-              (#when PC_PORT
-                  (when (pc-cheats? (-> *pc-settings* cheats) mirror)
-                      (set! (-> pad leftx) (- 255 (-> pad leftx)))
-                      (set! (-> pad rightx) (- 255 (-> pad rightx)))
-                      ))
-              ;; compute speed and direction, with deadband.
-              (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
-                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
+             ((= (-> *pc-tas-input-frame* tas-frame) 0)
+              ;; compute a speed and direction for stick0
+              (set! (-> pad stick0-speed) 1.0)
+              (cond
+                ;; check if controller is a valid dualshock 2
+                ((= (shr (-> pad status) 4) 7)
+                  ;; invert analogs if mirrored mode. trust me, you'll need this.
+                  (#when PC_PORT
+                      (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+                          (set! (-> pad leftx) (- 255 (-> pad leftx)))
+                          (set! (-> pad rightx) (- 255 (-> pad rightx)))
+                          ))
+                  ;; compute speed and direction, with deadband.
+                  (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
+                        (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
+                        )
+                    (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
+                    (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
                     )
-                (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
-                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
+                  (if (< (-> pad stick0-speed) STICK_DEADZONE)
+                      (set! (-> pad stick0-speed) 0.0)
+                      )
+                  )
+                (else
+                  ;; analog is invalid? set to zero.
+                  (set! (-> pad leftx) (the-as uint 128))
+                  (set! (-> pad lefty) (the-as uint 128))
+                  (set! (-> pad rightx) (the-as uint 128))
+                  (set! (-> pad righty) (the-as uint 128))
+                  (set! (-> pad stick0-dir) 0.0)
+                  (set! (-> pad stick0-speed) 0.0)
+                  )
                 )
+             )
+             (else
+              ;; Always leave our sticks at neutral so they don't impact anything else
+              (set! (-> pad leftx) (the-as uint 128))
+              (set! (-> pad lefty) (the-as uint 128))
+              (set! (-> pad rightx) (the-as uint 128))
+              (set! (-> pad righty) (the-as uint 128))
+
+              ;; Set the calculated direction (accounting for mirror mode) and movement speed
+              (if (pc-cheats? (-> *pc-settings* cheats) mirror)
+                (set! (-> pad stick0-dir) (string->float "18000"))
+                (set! (-> pad stick0-dir) (- 65536.0 (string->float "18000")))
+                )
+              )
+              
+              (set! (-> pad stick0-speed) (string->float "0.6"))
               (if (< (-> pad stick0-speed) STICK_DEADZONE)
                   (set! (-> pad stick0-speed) 0.0)
                   )
-              )
-             (else
-               ;; analog is invalid? set to zero.
-               (set! (-> pad leftx) (the-as uint 128))
-               (set! (-> pad lefty) (the-as uint 128))
-               (set! (-> pad rightx) (the-as uint 128))
-               (set! (-> pad righty) (the-as uint 128))
-               (set! (-> pad stick0-dir) 0.0)
-               (set! (-> pad stick0-speed) 0.0)
-               )
-             )
+            )
            ;; if the pad was changed or stick0 pushed, update the last changed time.
            (if (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
                    (or (< STICK_DEADZONE (-> pad stick0-speed)) (zero? (-> pad change-time)))

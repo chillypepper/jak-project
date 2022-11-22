@@ -145,15 +145,11 @@
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
 
-  (set! *pc-tas-frame* (pc-get-tas-frame))
-  (set! *skip-spool-movies* (pc-get-skip-spool-movies))
-
   ;; TODO We only do this when a cutscene isn't playing for TAS runs
-  (if (or (= *pc-tas-frame* 0) (not (-> *pc-settings* movie?)))
-    (let ((pc-frame-rate (pc-get-frame-rate)))
-      (if (!= (-> obj target-fps) pc-frame-rate)
-        (set-frame-rate! obj (the-as int (pc-get-frame-rate)))
-        ))
+  (if (or (= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
+    (if (!= (-> obj target-fps) (-> *pc-tas-input-frame* frame-rate))
+      (set-frame-rate! obj (the-as int (-> *pc-tas-input-frame* frame-rate)))
+      )
     )
 
   (when (-> obj use-vis?)
@@ -384,6 +380,11 @@
   (update-cheats obj)
   ;; music.
   (update-music-log obj)
+
+  ;; update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
+  ;; (if (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
+  ;;   (pc-tas-update-frame-results)
+  ;;   )
 
   (none))
 

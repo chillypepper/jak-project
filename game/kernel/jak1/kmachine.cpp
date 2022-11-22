@@ -646,10 +646,9 @@ void InitMachine_PCPort() {
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
-  // extra tas functions
-  make_function_symbol_from_c("pc-get-tas-frame", (void*)get_tas_frame);
-  make_function_symbol_from_c("pc-get-frame-rate", (void*)Gfx::get_frame_rate);
-  make_function_symbol_from_c("pc-get-skip-spool-movies", (void*)get_skip_spool_movies);
+  // TAS functions
+  make_function_symbol_from_c("pc-tas-read-current-frame", (void*)TAS::tas_read_current_frame);
+  make_function_symbol_from_c("pc-tas-update-frame-results", (void*)TAS::tas_update_frame_results);
 
   // init ps2 VM
   if (VM::use) {
