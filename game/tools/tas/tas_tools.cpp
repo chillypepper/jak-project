@@ -11,10 +11,12 @@
 
 // Keep references to the structs shared with GOAL
 u64 tas_input_frame_goal_ptr = 0;
+u64 tas_input_frame_results_goal_ptr = 0;
 
 // Track our inputs for both playbacks and recordings
 std::vector<TAS::TASInput> tas_inputs;
 std::vector<TAS::TASInput> tas_recording_inputs;
+std::vector<TAS::TASInputFrameResultsGOAL> tas_results;
 
 // Track our true frame number as well as what input index we're in
 u64 tas_input_frame = 0;
@@ -52,17 +54,7 @@ TASInputFrameGOAL tas_read_current_frame() {
 
 // Update the shared pointer with the inputs for the current frame
 void tas_update_goal_input_frame() {
-  // Copied and changed behaviour from jak1::make_string_from_c
-  // NOTE There's no check for failed allocation here!
-  if (tas_input_frame_goal_ptr == 0) {
-    tas_input_frame_goal_ptr = jak1::alloc_heap_object(
-        (s7 + jak1_symbols::FIX_SYM_GLOBAL_HEAP).offset, *(s7 + jak1_symbols::FIX_SYM_STRING_TYPE),
-        sizeof(TASInputFrameGOAL) + BASIC_OFFSET + 4, UNKNOWN_PP);
-  }
-
   *Ptr<TASInputFrameGOAL>(tas_input_frame_goal_ptr).c() = tas_read_current_frame();
-
-  jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_input_frame_goal_ptr;
 
   // If TAS is enabled we take over the controller, until it's finished or cancelled
   if (tas_input_frame > 0 && tas_input_index < tas_inputs.size()) {
@@ -77,20 +69,62 @@ void tas_update_goal_input_frame() {
   }
 }
 
+void tas_init() {
+  // Copied and changed behaviour from jak1::make_string_from_c
+  // NOTE There's no check for failed allocation here!
+  if (tas_input_frame_goal_ptr == 0) {
+    tas_input_frame_goal_ptr = jak1::alloc_heap_object(
+        (s7 + jak1_symbols::FIX_SYM_GLOBAL_HEAP).offset, *(s7 + jak1_symbols::FIX_SYM_STRING_TYPE),
+        sizeof(TASInputFrameGOAL) + BASIC_OFFSET + 4, UNKNOWN_PP);
+  }
+
+  if (tas_input_frame_results_goal_ptr == 0) {
+    tas_input_frame_results_goal_ptr = jak1::alloc_heap_object(
+        (s7 + jak1_symbols::FIX_SYM_GLOBAL_HEAP).offset, *(s7 + jak1_symbols::FIX_SYM_STRING_TYPE),
+        sizeof(TASInputFrameResultsGOAL) + BASIC_OFFSET + 4, UNKNOWN_PP);
+  }
+
+  jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_input_frame_goal_ptr;
+  jak1::intern_from_c("*pc-tas-input-frame-results*")->value = tas_input_frame_results_goal_ptr;
+
+  tas_update_goal_input_frame();
+
+  *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c() = {.tas_frame = 0,
+                                                                          .fuel_cell_total = 0,
+                                                                          .money_total = 0,
+                                                                          .buzzer_total = 0,
+                                                                          .actual_player_angle = 0};
+}
+
 void tas_end_inputs() {
   tas_input_frame = 0;
   tas_input_index = 0;
-  tas_update_goal_input_frame();
-  Gfx::set_frame_rate(60);
   lg::debug("[TAS Playback] TAS complete.");
 }
 
 void tas_update_frame_results() {
   if (tas_input_frame > 0 && tas_input_index < tas_inputs.size()) {
-    // lg::debug("[TAS Playback] Finished frame " + std::to_string(tas_input_frame));
+    // lg::debug("[TAS Playback] Finished frame: " + std::to_string(tas_input_frame));
+
+    TASInputFrameResultsGOAL results =
+        *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c();
+
+    if (tas_results.size()) {
+      size_t last_index = tas_results.size() - 1;
+
+      if (results.fuel_cell_total > tas_results[last_index].fuel_cell_total ||
+          results.money_total > tas_results[last_index].money_total ||
+          results.buzzer_total > tas_results[last_index].buzzer_total) {
+        lg::debug("[TAS Playback] Frame results: " +
+                  Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c()->toString());
+      }
+    }
+
+    tas_results.push_back(results);
+
     ++tas_input_frame;
 
-    if (tas_input_frame >= tas_inputs[tas_input_index].last_frame) {
+    if (tas_input_frame > tas_inputs[tas_input_index].last_frame) {
       ++tas_input_index;
 
       if (tas_input_index >= tas_inputs.size()) {
@@ -368,6 +402,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
     lg::debug("[TAS Playback] Starting TAS ...");
 
     // Set up first input with default values
+    tas_results.clear();
     tas_inputs.clear();
     tas_inputs.push_back({.first_frame = 1,
                           .last_frame = 1,

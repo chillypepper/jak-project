@@ -59,6 +59,38 @@ struct TASInputFrameGOAL {
   float player_speed;
   float camera_zoom;
   u16 camera_angle;
+
+  // Quick debug output just to make sure things look right
+  // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
+  std::string toString() {
+    return "@^" + std::string("\"tas_frame\": \"") + std::to_string(tas_frame) + "\"," +
+           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +
+           std::string("\"skip_spool_movies\": \"") + std::to_string(skip_spool_movies) + "\"," +
+           std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
+           std::string("\"player_angle\": \"") + std::to_string(player_angle) + "\"," +
+           std::string("\"player_speed\": \"") + std::to_string(player_speed) + "\"," +
+           std::string("\"camera_zoom\": \"") + std::to_string(camera_zoom) + "\"," +
+           std::string("\"camera_angle\": \"") + std::to_string(camera_angle) + "@";
+  };
+};
+
+// Matches tas-input-frame-results in tas.gc
+struct TASInputFrameResultsGOAL {
+  u64 tas_frame;
+  u16 fuel_cell_total;
+  u16 money_total;
+  u16 buzzer_total;
+  u16 actual_player_angle;
+
+  // Quick debug output just to make sure things look right
+  // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
+  std::string toString() {
+    return "@^" + std::string("\"tas_frame\": \"") + std::to_string(tas_frame) + "\"," +
+           std::string("\"fuel_cell_total\": \"") + std::to_string(fuel_cell_total) + "\"," +
+           std::string("\"money_total\": \"") + std::to_string(money_total) + "\"," +
+           std::string("\"buzzer_total\": \"") + std::to_string(buzzer_total) + "\"," +
+           std::string("\"actual_player_angle\": \"") + std::to_string(actual_player_angle) + "@";
+  }
 };
 
 // Strings for tas folders and files
@@ -86,6 +118,7 @@ const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Butto
                                                            {"Square", Pad::Button::Square}};
 
 // Functions for managing the TAS
+void tas_init();
 void tas_update_goal_input_frame();
 void tas_handle_pad_inputs(CPadInfo* cpad);
 void tas_update_frame_results();

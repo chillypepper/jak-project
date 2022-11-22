@@ -21,14 +21,15 @@
 
 ;; Also copied into TASInputFrameResultsGOAL in tas_tools.h
 (deftype tas-input-frame-results (structure)
-  ((tas-frame     uint64 :offset-assert  0)
-   (new-fuel-cell uint16 :offset-assert  8)
-   (new-money     uint16 :offset-assert 10)
-   (new-buzzer    uint16 :offset-assert 12)
+  ((tas-frame           uint64 :offset-assert  0)
+   (fuel-cell-total     uint16 :offset-assert  8)
+   (money-total         uint16 :offset-assert 10)
+   (buzzer-total        uint16 :offset-assert 12)
+   (actual-player-angle uint16 :offset-assert 14)
    )
   :method-count-assert 9
-  :size-assert         #x0E
-  :flag-assert         #x90000000E
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
 
 ;; These functions get the inputs for the current frame and update the frame progress if necessary
