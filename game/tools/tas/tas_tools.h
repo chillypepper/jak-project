@@ -98,7 +98,7 @@ const std::string tas_folder_path = "tas/jak1/";
 const std::string tas_main_file_name = "main";
 const std::string tas_file_extension = ".jaktas";
 const std::string tas_recording_file_extension = ".recording" + tas_file_extension;
-const std::string tas_results_file_extension = ".results" + tas_file_extension;
+const std::string tas_results_file_extension = ".automated.results.json";
 
 const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
                                                            {"L3", Pad::Button::L3},

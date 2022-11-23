@@ -5,9 +5,12 @@
 
 #include "common/log/log.h"
 #include "common/symbols.h"
+#include "common/util/FileUtil.h"
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/Ptr.h"
+
+#include "third-party/json.hpp"
 
 // Keep references to the structs shared with GOAL
 u64 tas_input_frame_goal_ptr = 0;
@@ -97,8 +100,27 @@ void tas_init() {
 }
 
 void tas_end_inputs() {
+  nlohmann::json json;
+  json["key-frames"] = nlohmann::json::array();
+
+  // TODO Might also be good to log the start and ends of files?
+  for (auto result : tas_results) {
+    json["key-frames"].push_back({{"tas-frame", result.tas_frame},
+                                  {"fuel-cell-total", result.fuel_cell_total},
+                                  {"money-total", result.money_total},
+                                  {"buzzer-total", result.buzzer_total},
+                                  {"money-total", result.money_total}});
+  }
+
+  // TODO Some error checking/logging
+  file_util::write_text_file(
+      tas_folder_path + std::to_string(std::time(nullptr)) + tas_results_file_extension,
+      json.dump(2));
+
   tas_input_frame = 0;
   tas_input_index = 0;
+  tas_results.clear();
+  tas_inputs.clear();
   lg::debug("[TAS Playback] TAS complete.");
 }
 
@@ -117,10 +139,13 @@ void tas_update_frame_results() {
           results.buzzer_total > tas_results[last_index].buzzer_total) {
         lg::debug("[TAS Playback] Frame results: " +
                   Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c()->toString());
-      }
-    }
 
-    tas_results.push_back(results);
+        tas_results.push_back(results);
+      }
+    } else {
+      // Store the first frame every time
+      tas_results.push_back(results);
+    }
 
     ++tas_input_frame;
 
@@ -128,6 +153,11 @@ void tas_update_frame_results() {
       ++tas_input_index;
 
       if (tas_input_index >= tas_inputs.size()) {
+        // Store the final frame if we haven't already
+        if (results.tas_frame != tas_results[tas_results.size() - 1].tas_frame) {
+          tas_results.push_back(results);
+        }
+
         tas_end_inputs();
       }
     }
