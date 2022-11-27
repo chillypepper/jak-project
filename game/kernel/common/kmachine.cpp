@@ -104,6 +104,8 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
  */
 u64 CPadGetData(u64 cpad_info) {
   using namespace ee;
+  // TODO Ideally handle this in GOAL, but adding this here for now so it's always updated in time
+  TAS::tas_update_goal_input_frame();
   auto cpad = Ptr<CPadInfo>(cpad_info).c();
   auto pad_state = scePadGetState(cpad->number, 0);
   if (pad_state == scePadStateDiscon) {

@@ -40,8 +40,8 @@ TASInputFrameGOAL tas_read_current_frame() {
             .button0 = input.button0,
             .player_angle = input.player_angle,
             .player_speed = input.player_speed,
-            .camera_zoom = input.camera_zoom,
-            .camera_angle = input.camera_angle};
+            .camera_angle = input.camera_angle,
+            .camera_zoom = input.camera_zoom};
   }
 
   // If we're not running a TAS (or just finished it) reset to empty
@@ -51,8 +51,8 @@ TASInputFrameGOAL tas_read_current_frame() {
           .button0 = 0,
           .player_angle = 0,
           .player_speed = 0,
-          .camera_zoom = 0,
-          .camera_angle = 0};
+          .camera_angle = 0,
+          .camera_zoom = 0};
 };
 
 // Update the shared pointer with the inputs for the current frame
