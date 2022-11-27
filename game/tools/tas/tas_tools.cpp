@@ -72,6 +72,24 @@ void tas_update_goal_input_frame() {
   }
 }
 
+void tas_reset_frame_data() {
+  tas_input_frame = 0;
+  tas_input_index = 0;
+  tas_results.clear();
+  tas_inputs.clear();
+
+  tas_update_goal_input_frame();
+
+  *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c() = {.tas_frame = 0,
+                                                                          .fuel_cell_total = 0,
+                                                                          .money_total = 0,
+                                                                          .buzzer_total = 0,
+                                                                          .input_player_angle = 0,
+                                                                          .input_player_speed = 0,
+                                                                          .input_camera_angle = 0,
+                                                                          .input_camera_zoom = 0};
+}
+
 void tas_init() {
   // Copied and changed behaviour from jak1::make_string_from_c
   // NOTE There's no check for failed allocation here!
@@ -90,21 +108,17 @@ void tas_init() {
   jak1::intern_from_c("*pc-tas-input-frame*")->value = tas_input_frame_goal_ptr;
   jak1::intern_from_c("*pc-tas-input-frame-results*")->value = tas_input_frame_results_goal_ptr;
 
-  tas_update_goal_input_frame();
-
-  *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c() = {.tas_frame = 0,
-                                                                          .fuel_cell_total = 0,
-                                                                          .money_total = 0,
-                                                                          .buzzer_total = 0,
-                                                                          .actual_player_angle = 0};
+  tas_reset_frame_data();
 }
 
 void tas_end_inputs() {
   nlohmann::json json;
   json["key-frames"] = nlohmann::json::array();
+  bool save_results = false;
 
-  // TODO Might also be good to log the start and ends of files?
   for (auto result : tas_results) {
+    // TODO Loop through inputs here for things that aren't stored in results, namely markers
+    // TODO Might also be good to log the start and ends of files?
     json["key-frames"].push_back({{"tas-frame", result.tas_frame},
                                   {"fuel-cell-total", result.fuel_cell_total},
                                   {"money-total", result.money_total},
@@ -112,15 +126,14 @@ void tas_end_inputs() {
                                   {"money-total", result.money_total}});
   }
 
-  // TODO Some error checking/logging
-  file_util::write_text_file(
-      tas_folder_path + std::to_string(std::time(nullptr)) + tas_results_file_extension,
-      json.dump(2));
+  if (save_results) {
+    // TODO Some error checking/logging
+    file_util::write_text_file(
+        tas_folder_path + std::to_string(std::time(nullptr)) + tas_results_file_extension,
+        json.dump(2));
+  }
 
-  tas_input_frame = 0;
-  tas_input_index = 0;
-  tas_results.clear();
-  tas_inputs.clear();
+  tas_reset_frame_data();
   lg::debug("[TAS Playback] TAS complete.");
 }
 
@@ -134,10 +147,15 @@ void tas_update_frame_results() {
     if (tas_results.size()) {
       size_t last_index = tas_results.size() - 1;
 
-      if (results.fuel_cell_total > tas_results[last_index].fuel_cell_total ||
-          results.money_total > tas_results[last_index].money_total ||
-          results.buzzer_total > tas_results[last_index].buzzer_total) {
-        lg::debug("[TAS Playback] Frame results: " +
+      if (results.fuel_cell_total != tas_results[last_index].fuel_cell_total ||
+          results.money_total != tas_results[last_index].money_total ||
+          results.buzzer_total != tas_results[last_index].buzzer_total) {
+        lg::debug("[TAS Playback] Frame results" +
+                  (tas_input_frame == tas_inputs[tas_input_index].first_frame &&
+                           tas_inputs[tas_input_index].marker != ""
+                       ? " (" + tas_inputs[tas_input_index].marker + ")"
+                       : "") +
+                  ": " +
                   Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c()->toString());
 
         tas_results.push_back(results);
@@ -247,7 +265,8 @@ void tas_load_inputs(std::string file_name) {
     }
 
     // Handle all of the special commands
-    TASKeyValue pair = tas_read_line_key_value(line, {"import", "frame-rate", "skip-spool-movies"});
+    TASKeyValue pair =
+        tas_read_line_key_value(line, {"import", "frame-rate", "marker", "skip-spool-movies"});
 
     if (pair.key != "") {
       // Import another tas file, and just read it in like it was originally part of this file
@@ -259,9 +278,20 @@ void tas_load_inputs(std::string file_name) {
         tas_add_new_input_if_needed(file_name, file_line);
         // TODO Check this differently, throwing an exception will crash even if it's caught
         tas_inputs[tas_inputs.size() - 1].frame_rate = std::stoul(pair.value);
+      } else if (pair.key == "marker") {
+        tas_add_new_input_if_needed(file_name, file_line);
+        // TODO Check this differently, throwing an exception will crash even if it's caught
+        tas_inputs[tas_inputs.size() - 1].marker = pair.value;
       } else if (pair.key == "skip-spool-movies") {
         tas_add_new_input_if_needed(file_name, file_line);
-        tas_inputs[tas_inputs.size() - 1].skip_spool_movies = tas_get_input_bool(pair.value);
+        s8 bool_value = tas_get_input_bool(pair.value);
+        if (bool_value != -1) {
+          tas_inputs[tas_inputs.size() - 1].skip_spool_movies = bool_value;
+        }
+      } else {
+        // If we reach here we passed something in the valid commands list but didn't handle
+        // it, the only case this should happen adding a new command and handling it
+        lg::warn("[TAS Input] Skipping unhandled command: " + raw_line);
       }
 
       continue;
@@ -323,8 +353,7 @@ void tas_load_inputs(std::string file_name) {
             tas_inputs[tas_inputs.size() - 1].camera_zoom = std::stoul(pair.value);
           } else {
             // If we reach here we passed something in the valid commands list but didn't handle
-            // it, the only case this should happen is if we added a new field and forgot to
-            // implement
+            // it, the only case this should happen adding a new field and handling it
             lg::warn("[TAS Input] Skipping unhandled field: " + field);
           }
         }
@@ -432,8 +461,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
     lg::debug("[TAS Playback] Starting TAS ...");
 
     // Set up first input with default values
-    tas_results.clear();
-    tas_inputs.clear();
+    tas_reset_frame_data();
     tas_inputs.push_back({.first_frame = 1,
                           .last_frame = 1,
                           .file_name = tas_main_file_name,

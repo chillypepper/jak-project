@@ -23,13 +23,14 @@ struct TASInput {
 
   // Command settings, should be set at the start of this line
   u16 frame_rate;
+  std::string marker;
   u16 skip_spool_movies;
 
   // Inputs for this line
   u16 button0;
-  u16 player_angle;
+  float player_angle;
   float player_speed;
-  u16 camera_angle;
+  float camera_angle;
   float camera_zoom;
 
   // Quick debug output just to make sure things look right
@@ -52,13 +53,13 @@ struct TASInput {
 // Matches tas-input-frame in tas.gc
 struct TASInputFrameGOAL {
   u64 tas_frame;
-  u16 frame_rate;
-  u16 skip_spool_movies;
-  u16 button0;
-  u16 player_angle;
+  u32 frame_rate;
+  u32 skip_spool_movies;
+  u32 button0;
+  float player_angle;
   float player_speed;
+  float camera_angle;
   float camera_zoom;
-  u16 camera_angle;
 
   // Quick debug output just to make sure things look right
   // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
@@ -69,18 +70,21 @@ struct TASInputFrameGOAL {
            std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
            std::string("\"player_angle\": \"") + std::to_string(player_angle) + "\"," +
            std::string("\"player_speed\": \"") + std::to_string(player_speed) + "\"," +
-           std::string("\"camera_zoom\": \"") + std::to_string(camera_zoom) + "\"," +
-           std::string("\"camera_angle\": \"") + std::to_string(camera_angle) + "@";
+           std::string("\"camera_angle\": \"") + std::to_string(camera_angle) + "\"," +
+           std::string("\"camera_zoom\": \"") + std::to_string(camera_zoom) + "@";
   };
 };
 
 // Matches tas-input-frame-results in tas.gc
 struct TASInputFrameResultsGOAL {
   u64 tas_frame;
-  u16 fuel_cell_total;
-  u16 money_total;
-  u16 buzzer_total;
-  u16 actual_player_angle;
+  float fuel_cell_total;
+  float money_total;
+  float buzzer_total;
+  float input_player_angle;
+  float input_player_speed;
+  float input_camera_angle;
+  float input_camera_zoom;
 
   // Quick debug output just to make sure things look right
   // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
@@ -89,7 +93,10 @@ struct TASInputFrameResultsGOAL {
            std::string("\"fuel_cell_total\": \"") + std::to_string(fuel_cell_total) + "\"," +
            std::string("\"money_total\": \"") + std::to_string(money_total) + "\"," +
            std::string("\"buzzer_total\": \"") + std::to_string(buzzer_total) + "\"," +
-           std::string("\"actual_player_angle\": \"") + std::to_string(actual_player_angle) + "@";
+           std::string("\"input_player_angle\": \"") + std::to_string(input_player_angle) +
+           std::string("\"input_player_speed\": \"") + std::to_string(input_player_speed) +
+           std::string("\"input_camera_angle\": \"") + std::to_string(input_camera_angle) +
+           std::string("\"input_camera_zoom\": \"") + std::to_string(input_camera_zoom) + "@";
   }
 };
 
@@ -119,6 +126,7 @@ const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Butto
 
 // Functions for managing the TAS
 void tas_init();
+TASInputFrameGOAL tas_read_current_frame();
 void tas_update_goal_input_frame();
 void tas_handle_pad_inputs(CPadInfo* cpad);
 void tas_update_frame_results();

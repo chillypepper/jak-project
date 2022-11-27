@@ -381,11 +381,13 @@
   (update-music-log obj)
 
   ;; only update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
-  (when (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
+  (when (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> obj movie?)))
     (set! (-> *pc-tas-input-frame-results* tas-frame) (-> *pc-tas-input-frame* tas-frame))
-    (set! (-> *pc-tas-input-frame-results* fuel-cell-total) (the uint16 (-> *game-info* fuel)))
-    (set! (-> *pc-tas-input-frame-results* money-total) (the uint16 (-> *game-info* money-total)))
-    (set! (-> *pc-tas-input-frame-results* buzzer-total) (the uint16 (-> *game-info* buzzer-total)))
+    (set! (-> *pc-tas-input-frame-results* fuel-cell-total) (-> *game-info* fuel))
+    (set! (-> *pc-tas-input-frame-results* money-total) (-> *game-info* money-total))
+    (set! (-> *pc-tas-input-frame-results* buzzer-total) (-> *game-info* buzzer-total))
+    (set! (-> *pc-tas-input-frame-results* input-player-angle) (-> *cpad-list* cpads 0 stick0-dir))
+    (set! (-> *pc-tas-input-frame-results* input-player-speed) (-> *cpad-list* cpads 0 stick0-speed))
     (pc-tas-update-frame-results)
     )
 

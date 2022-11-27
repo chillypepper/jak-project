@@ -25,6 +25,7 @@
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
+#include "game/tools/tas/tas_tools.h"
 
 using namespace iop;
 
@@ -1298,6 +1299,14 @@ static void UpdatePlayPos() {
 
   gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate);
   gPlayPos = pos;
+
+  // TODO If we're running a TAS we also speed up these scenes a bit. Not perfect but it works!
+  // NOTE The way we calculate frames is a bit rough, assumes sounds are 30fps and game is 60fps
+  TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
+  if (tas_data.tas_frame != 0) {
+    gRealVAGClock =
+        (4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate)) * ((tas_data.frame_rate / 2) / 30);
+  }
 }
 
 void* RPC_DGO(unsigned int fno, void* _cmd, int y);

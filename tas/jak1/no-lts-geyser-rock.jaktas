@@ -1,38 +1,29 @@
-# Wait after exiting portal before inputs work again
-commands,frame-rate=999,skip-spool-movies=true
-581
+marker=new_game_start
 
 # First inputs after portal
-13,leftx=88,lefty=0
-10,L1
-10,X
-235,
-# The last few frames of finishing the roll will determine the next direction
-8,leftx=140
-10,L1
-10,X
-240
-10,L1,leftx=140
-10,X
-216
+6,player-angle=43000,player-speed=1
+20,L1
+20,X
+24,player-angle=42500
+20,L1
+20,X
+24
+20,L1
+20,X
+17
 
 # Launch up to first ledge
-13,X,leftx=99
-119
-9,leftx=133
-10,L1
-10,X
-242
-8,leftx=164
-10,L1
-10,X
-230
-8,leftx=180
-10,L1
-10,X
-167
-# # TODO This is part of collecting the cell, reset to neutral to avoid keeping speed after cutscene is skipped (will be fixed later)
-12,leftx=128,lefty=128
+8,X
+32
+20,L1,player-angle=43000
+20,X
+22
+20,L1,player-angle=47000
+20,X
+27
+20,L1,player-angle=52000
+20,X
+12
 
-# # After collecting first cell
+# After collecting first cell
 1,Circle
