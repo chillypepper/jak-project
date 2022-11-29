@@ -388,6 +388,14 @@ s64 get_frame_rate() {
   return g_global_settings.target_fps;
 }
 
+std::tuple<double, double> get_mouse_pos() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_mouse_pos();
+  } else {
+    return {0, 0};
+  }
+}
+
 GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->fullscreen_mode();
