@@ -8,15 +8,16 @@
   ((tas-frame         uint64 :offset-assert  0)
    (frame-rate        uint32 :offset-assert  8)
    (skip-spool-movies uint32 :offset-assert 12)
-   (button0           uint32 :offset-assert 16)
-   (player-angle      float  :offset-assert 20)
-   (player-speed      float  :offset-assert 24)
-   (camera-angle      float  :offset-assert 28)
-   (camera-zoom       float  :offset-assert 32)
+   (is-recording-tas  uint32 :offset-assert 16)
+   (button0           uint32 :offset-assert 20)
+   (player-angle      float  :offset-assert 24)
+   (player-speed      float  :offset-assert 28)
+   (camera-angle      float  :offset-assert 32)
+   (camera-zoom       float  :offset-assert 36)
    )
   :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
+  :size-assert         #x28
+  :flag-assert         #x900000028
   )
 
 ;; Also copied into TASInputFrameResultsGOAL in tas_tools.h
@@ -25,14 +26,15 @@
    (fuel-cell-total     float  :offset-assert  8)
    (money-total         float  :offset-assert 12)
    (buzzer-total        float  :offset-assert 16)
-   (input-player-angle  float  :offset-assert 20)
-   (input-player-speed  float  :offset-assert 24)
-   (input-camera-angle  float  :offset-assert 28)
-   (input-camera-zoom   float  :offset-assert 32)
+   (input-button0       uint32 :offset-assert 20)
+   (input-player-angle  float  :offset-assert 24)
+   (input-player-speed  float  :offset-assert 28)
+   (input-camera-angle  float  :offset-assert 32)
+   (input-camera-zoom   float  :offset-assert 36)
    )
   :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
+  :size-assert         #x28
+  :flag-assert         #x900000028
   )
 
 ;; These functions get the inputs for the current frame and update the frame progress if necessary

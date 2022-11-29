@@ -377,10 +377,10 @@
               (set! (-> pad rightx) (the-as uint 128))
               (set! (-> pad righty) (the-as uint 128))
 
-              ;; Set the calculated direction (accounting for mirror mode) and movement speed
+              ;; Set the calculated direction (accounting for mirror mode)
               (if (pc-cheats? (-> *pc-settings* cheats) mirror)
+                (set! (-> pad stick0-dir) (* -1.0 (-> *pc-tas-input-frame* player-angle)))
                 (set! (-> pad stick0-dir) (-> *pc-tas-input-frame* player-angle))
-                (set! (-> pad stick0-dir) (- 65536.0 (-> *pc-tas-input-frame* player-angle)))
                 )
 
               (set! (-> pad stick0-speed) (-> *pc-tas-input-frame* player-speed))

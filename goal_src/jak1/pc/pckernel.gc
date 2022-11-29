@@ -381,13 +381,23 @@
   (update-music-log obj)
 
   ;; only update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
-  (when (and (!= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> obj movie?)))
+  (when (and (or (!= (-> *pc-tas-input-frame* tas-frame) 0) (!= (-> *pc-tas-input-frame* is-recording-tas) 0)) (not (-> obj movie?)))
     (set! (-> *pc-tas-input-frame-results* tas-frame) (-> *pc-tas-input-frame* tas-frame))
     (set! (-> *pc-tas-input-frame-results* fuel-cell-total) (-> *game-info* fuel))
     (set! (-> *pc-tas-input-frame-results* money-total) (-> *game-info* money-total))
     (set! (-> *pc-tas-input-frame-results* buzzer-total) (-> *game-info* buzzer-total))
-    (set! (-> *pc-tas-input-frame-results* input-player-angle) (-> *cpad-list* cpads 0 stick0-dir))
+    (set! (-> *pc-tas-input-frame-results* input-button0) (-> *cpad-list* cpads 0 button0))
+
+    ;; TODO Set the calculated direction (accounting for mirror mode, and for camera angle during recording)
+    (if (pc-cheats? (-> *pc-settings* cheats) mirror)
+      (set! (-> *pc-tas-input-frame-results* input-player-angle) (* -1.0 (-> *cpad-list* cpads 0 stick0-dir)))
+      (set! (-> *pc-tas-input-frame-results* input-player-angle) (-> *cpad-list* cpads 0 stick0-dir))
+      )
+
     (set! (-> *pc-tas-input-frame-results* input-player-speed) (-> *cpad-list* cpads 0 stick0-speed))
+    (set! (-> *pc-tas-input-frame-results* input-camera-angle) 0.0)
+    (set! (-> *pc-tas-input-frame-results* input-camera-zoom) 0.0)
+
     (pc-tas-update-frame-results)
     )
 

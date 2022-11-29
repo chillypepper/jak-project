@@ -24,6 +24,7 @@ std::vector<TAS::TASInputFrameResultsGOAL> tas_results;
 // Track our true frame number as well as what input index we're in
 u64 tas_input_frame = 0;
 u64 tas_input_index = 0;
+bool tas_is_recording_input = 0;
 
 // This is true if the last input was at least 1 frame long, we'll need to create a new TASInput
 bool last_input_had_frame_data = false;
@@ -37,6 +38,8 @@ TASInputFrameGOAL tas_read_current_frame() {
     return {.tas_frame = tas_input_frame,
             .frame_rate = input.frame_rate,
             .skip_spool_movies = input.skip_spool_movies,
+            // We never record input during playbacks
+            .is_recording_input = false,
             .button0 = input.button0,
             .player_angle = input.player_angle,
             .player_speed = input.player_speed,
@@ -48,6 +51,7 @@ TASInputFrameGOAL tas_read_current_frame() {
   return {.tas_frame = 0,
           .frame_rate = 60,
           .skip_spool_movies = 0,
+          .is_recording_input = tas_is_recording_input,
           .button0 = 0,
           .player_angle = 0,
           .player_speed = 0,
@@ -179,6 +183,27 @@ void tas_update_frame_results() {
         tas_end_inputs();
       }
     }
+  } else if (tas_is_recording_input) {
+    TASInputFrameResultsGOAL results =
+        *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c();
+
+    size_t last_index = tas_recording_inputs.size() - 1;
+
+    if (last_index != -1 && tas_recording_inputs[last_index].button0 == results.input_button0 &&
+        tas_recording_inputs[last_index].player_angle == results.input_player_angle &&
+        tas_recording_inputs[last_index].player_speed == results.input_player_speed &&
+        tas_recording_inputs[last_index].camera_angle == results.input_camera_angle &&
+        tas_recording_inputs[last_index].camera_zoom == results.input_camera_zoom) {
+      ++tas_recording_inputs[last_index].last_frame;
+    } else {
+      u64 frame = tas_recording_inputs.size() == 0 ? 1 : tas_inputs[last_index].last_frame + 1;
+
+      tas_recording_inputs.push_back({.button0 = results.input_button0,
+                                      .player_angle = results.input_player_angle,
+                                      .player_speed = results.input_player_speed,
+                                      .camera_angle = results.input_camera_angle,
+                                      .camera_zoom = results.input_camera_zoom});
+    }
   }
 }
 
@@ -209,19 +234,19 @@ s8 tas_get_input_bool(std::string value) {
 void tas_add_new_input_if_needed(std::string file_name, u64 file_line) {
   // If the last input was a command we can edit the last input rather than making a new one
   if (last_input_had_frame_data) {
-    size_t last_input_index = tas_inputs.size() - 1;
+    size_t last_index = tas_inputs.size() - 1;
     last_input_had_frame_data = false;
-    tas_inputs.push_back({.first_frame = tas_inputs[last_input_index].last_frame + 1,
-                          .last_frame = tas_inputs[last_input_index].last_frame + 1,
+    tas_inputs.push_back({.first_frame = tas_inputs[last_index].last_frame + 1,
+                          .last_frame = tas_inputs[last_index].last_frame + 1,
                           .file_name = file_name,
                           .file_line = file_line,
-                          .frame_rate = tas_inputs[last_input_index].frame_rate,
-                          .skip_spool_movies = tas_inputs[last_input_index].skip_spool_movies,
+                          .frame_rate = tas_inputs[last_index].frame_rate,
+                          .skip_spool_movies = tas_inputs[last_index].skip_spool_movies,
                           .button0 = 0,
-                          .player_angle = tas_inputs[last_input_index].player_angle,
-                          .player_speed = tas_inputs[last_input_index].player_speed,
-                          .camera_angle = tas_inputs[last_input_index].camera_angle,
-                          .camera_zoom = tas_inputs[last_input_index].camera_zoom});
+                          .player_angle = tas_inputs[last_index].player_angle,
+                          .player_speed = tas_inputs[last_index].player_speed,
+                          .camera_angle = tas_inputs[last_index].camera_angle,
+                          .camera_zoom = tas_inputs[last_index].camera_zoom});
   }
 }
 
@@ -344,13 +369,13 @@ void tas_load_inputs(std::string file_name) {
           // Get the target directions
           // TODO Check this differently, throwing an exception will crash even if it's caught
           if (pair.key == "player-angle") {
-            tas_inputs[tas_inputs.size() - 1].player_angle = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].player_angle = std::stof(pair.value);
           } else if (pair.key == "player-speed") {
-            tas_inputs[tas_inputs.size() - 1].player_speed = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].player_speed = std::stof(pair.value);
           } else if (pair.key == "camera-angle") {
-            tas_inputs[tas_inputs.size() - 1].camera_angle = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].camera_angle = std::stof(pair.value);
           } else if (pair.key == "camera-zoom") {
-            tas_inputs[tas_inputs.size() - 1].camera_zoom = std::stoul(pair.value);
+            tas_inputs[tas_inputs.size() - 1].camera_zoom = std::stof(pair.value);
           } else {
             // If we reach here we passed something in the valid commands list but didn't handle
             // it, the only case this should happen adding a new field and handling it
@@ -371,22 +396,16 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
   // Use L2 to enable recording inputs. This isn't a toggle to avoid multi frame button
   // presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L2)) &&
-      tas_recording_inputs.size() == 0) {
+      !tas_is_recording_input) {
     lg::debug("[TAS Recording] Starting recording ...");
-
-    // FrameInputs input;
-
-    // input.first_frame = 0;
-    // input.last_frame = 0;
-
-    // tas_recording_inputs.clear();
-    // tas_recording_inputs.push_back(input);
+    tas_is_recording_input = true;
+    tas_recording_inputs.clear();
   }
 
   // Use R2 to disable recording inputs. This isn't a toggle to avoid multi frame button
   // presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::R2)) &&
-      tas_recording_inputs.size() != 0) {
+      tas_is_recording_input) {
     lg::debug("[TAS Recording] Ending recording");
 
     std::ofstream frame_output_file;
@@ -394,12 +413,17 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
     frame_output_file.open(tas_folder_path + std::to_string(std::time(nullptr)) +
                            tas_recording_file_extension);
 
-    // TODO Move all of the code for reading these inputs into GOAL and load them directly in
-    // movement, no more cpad faking
     for (auto input : tas_recording_inputs) {
       if (index != 0) {
-        std::string controls =
-            std::string("") +
+        std::string controls = "";
+
+        for (auto button : gamepad_map) {
+          if (input.button0 & (u16)std::pow(2, static_cast<int>(button.second))) {
+            controls += "," + button.first;
+          }
+        }
+
+        controls +=
             (index == 1 || tas_recording_inputs[index - 1].player_angle != input.player_angle
                  ? ",player-angle=" + std::to_string(input.player_angle)
                  : "") +
@@ -413,14 +437,8 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
                  ? ",camera-zoom=" + std::to_string(input.camera_zoom)
                  : "");
 
-        for (auto button : gamepad_map) {
-          if (input.button0 & (u16)std::pow(2, static_cast<int>(button.second))) {
-            controls += "," + button.first;
-          }
-        }
-
-        // frame_output_file << std::to_string((input.last_frame - input.first_frame) + 1) +
-        // controls << std::endl;
+        frame_output_file << std::to_string((input.last_frame - input.first_frame) + 1) + controls
+                          << std::endl;
       }
 
       ++index;
@@ -428,36 +446,13 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
 
     frame_output_file.close();
 
+    tas_is_recording_input = false;
     tas_recording_inputs.clear();
-  }
-
-  if (tas_recording_inputs.size() != 0) {
-    // size_t lastIndex = tas_recording_inputs.size() - 1;
-
-    // if (tas_recording_inputs[lastIndex].button0 == cpad->button0 &&
-    //     tas_recording_inputs[lastIndex].leftx == cpad->leftx &&
-    //     tas_recording_inputs[lastIndex].lefty == cpad->lefty &&
-    //     tas_recording_inputs[lastIndex].rightx == cpad->rightx &&
-    //     tas_recording_inputs[lastIndex].righty == cpad->righty) {
-    //   ++tas_recording_inputs[lastIndex].last_frame;
-    // } else {
-    //   FrameInputs input;
-
-    //   input.first_frame = tas_recording_inputs[lastIndex].last_frame + 1;
-    //   input.last_frame = tas_recording_inputs[lastIndex].last_frame + 1;
-    //   input.button0 = cpad->button0;
-    //   input.leftx = cpad->leftx;
-    //   input.lefty = cpad->lefty;
-    //   input.rightx = cpad->rightx;
-    //   input.righty = cpad->righty;
-
-    //   tas_recording_inputs.push_back(input);
-    // }
   }
 
   // Use L3 to enable the TAS. This isn't a toggle to avoid multi frame button presses
   if (tas_input_frame == 0 && cpad->button0 == std::pow(2, static_cast<int>(Pad::Button::L3)) &&
-      tas_recording_inputs.size() == 0) {
+      !tas_is_recording_input) {
     lg::debug("[TAS Playback] Starting TAS ...");
 
     // Set up first input with default values

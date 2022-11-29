@@ -22,12 +22,12 @@ struct TASInput {
   u64 file_line;
 
   // Command settings, should be set at the start of this line
-  u16 frame_rate;
+  u32 frame_rate;
   std::string marker;
-  u16 skip_spool_movies;
+  u32 skip_spool_movies;
 
   // Inputs for this line
-  u16 button0;
+  u32 button0;
   float player_angle;
   float player_speed;
   float camera_angle;
@@ -55,6 +55,7 @@ struct TASInputFrameGOAL {
   u64 tas_frame;
   u32 frame_rate;
   u32 skip_spool_movies;
+  u32 is_recording_input;
   u32 button0;
   float player_angle;
   float player_speed;
@@ -67,6 +68,7 @@ struct TASInputFrameGOAL {
     return "@^" + std::string("\"tas_frame\": \"") + std::to_string(tas_frame) + "\"," +
            std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +
            std::string("\"skip_spool_movies\": \"") + std::to_string(skip_spool_movies) + "\"," +
+           std::string("\"is_recording_input\": \"") + std::to_string(is_recording_input) + "\"," +
            std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
            std::string("\"player_angle\": \"") + std::to_string(player_angle) + "\"," +
            std::string("\"player_speed\": \"") + std::to_string(player_speed) + "\"," +
@@ -81,6 +83,7 @@ struct TASInputFrameResultsGOAL {
   float fuel_cell_total;
   float money_total;
   float buzzer_total;
+  u32 input_button0;
   float input_player_angle;
   float input_player_speed;
   float input_camera_angle;
@@ -93,9 +96,10 @@ struct TASInputFrameResultsGOAL {
            std::string("\"fuel_cell_total\": \"") + std::to_string(fuel_cell_total) + "\"," +
            std::string("\"money_total\": \"") + std::to_string(money_total) + "\"," +
            std::string("\"buzzer_total\": \"") + std::to_string(buzzer_total) + "\"," +
-           std::string("\"input_player_angle\": \"") + std::to_string(input_player_angle) +
-           std::string("\"input_player_speed\": \"") + std::to_string(input_player_speed) +
-           std::string("\"input_camera_angle\": \"") + std::to_string(input_camera_angle) +
+           std::string("\"input_button0\": \"") + std::to_string(input_button0) + "\"," +
+           std::string("\"input_player_angle\": \"") + std::to_string(input_player_angle) + "\"," +
+           std::string("\"input_player_speed\": \"") + std::to_string(input_player_speed) + "\"," +
+           std::string("\"input_camera_angle\": \"") + std::to_string(input_camera_angle) + "\"," +
            std::string("\"input_camera_zoom\": \"") + std::to_string(input_camera_zoom) + "@";
   }
 };
