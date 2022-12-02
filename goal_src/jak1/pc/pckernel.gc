@@ -395,9 +395,8 @@
       )
 
     (set! (-> *pc-tas-input-frame-results* input-player-speed) (-> *cpad-list* cpads 0 stick0-speed))
-    (set! (-> *pc-tas-input-frame-results* input-camera-angle) 0.0)
+    (set! (-> *pc-tas-input-frame-results* input-camera-angle) (camera-angle))
     (set! (-> *pc-tas-input-frame-results* input-camera-zoom) 0.0)
-
     (pc-tas-update-frame-results)
     )
 

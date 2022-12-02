@@ -29,6 +29,9 @@ bool tas_is_recording_input = 0;
 // This is true if the last input was at least 1 frame long, we'll need to create a new TASInput
 bool last_input_had_frame_data = false;
 
+// If we have save-results true in the file we'll save output for comparing times
+bool save_results = false;
+
 namespace TAS {
 // Fill the given pointers with data from the current tas frame
 TASInputFrameGOAL tas_read_current_frame() {
@@ -79,6 +82,7 @@ void tas_update_goal_input_frame() {
 void tas_reset_frame_data() {
   tas_input_frame = 0;
   tas_input_index = 0;
+  save_results = false;
   tas_results.clear();
   tas_inputs.clear();
 
@@ -118,7 +122,6 @@ void tas_init() {
 void tas_end_inputs() {
   nlohmann::json json;
   json["key-frames"] = nlohmann::json::array();
-  bool save_results = false;
 
   for (auto result : tas_results) {
     // TODO Loop through inputs here for things that aren't stored in results, namely markers
@@ -290,8 +293,8 @@ void tas_load_inputs(std::string file_name) {
     }
 
     // Handle all of the special commands
-    TASKeyValue pair =
-        tas_read_line_key_value(line, {"import", "frame-rate", "marker", "skip-spool-movies"});
+    TASKeyValue pair = tas_read_line_key_value(
+        line, {"import", "frame-rate", "marker", "save-results", "skip-spool-movies"});
 
     if (pair.key != "") {
       // Import another tas file, and just read it in like it was originally part of this file
@@ -307,6 +310,11 @@ void tas_load_inputs(std::string file_name) {
         tas_add_new_input_if_needed(file_name, file_line);
         // TODO Check this differently, throwing an exception will crash even if it's caught
         tas_inputs[tas_inputs.size() - 1].marker = pair.value;
+      } else if (pair.key == "save-results") {
+        s8 bool_value = tas_get_input_bool(pair.value);
+        if (bool_value != -1) {
+          save_results = bool_value;
+        }
       } else if (pair.key == "skip-spool-movies") {
         tas_add_new_input_if_needed(file_name, file_line);
         s8 bool_value = tas_get_input_bool(pair.value);
@@ -408,6 +416,7 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
       tas_is_recording_input) {
     lg::debug("[TAS Recording] Ending recording");
 
+    // TODO Rewrite this using write_text_file like with tas_end_inputs
     std::ofstream frame_output_file;
     u64 index = 0;
     frame_output_file.open(tas_folder_path + std::to_string(std::time(nullptr)) +
@@ -423,19 +432,27 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
           }
         }
 
+        // TODO Find a nicer way of writing this. Ensure rotation doesn't go outside limits
+        float angle_after_camera = (input.player_angle + input.camera_angle);
+        if (angle_after_camera < -32768) {
+          angle_after_camera = (angle_after_camera * -1) + (angle_after_camera + 32768);
+        } else if (angle_after_camera > 32768) {
+          angle_after_camera = (angle_after_camera * -1) + (angle_after_camera - 32768);
+        }
+
         controls +=
-            (index == 1 || tas_recording_inputs[index - 1].player_angle != input.player_angle
-                 ? ",player-angle=" + std::to_string(input.player_angle)
+            (index == 1 || tas_recording_inputs[index - 1].player_angle != angle_after_camera
+                 ? ",player-angle=" + std::to_string(angle_after_camera)
                  : "") +
             (index == 1 || tas_recording_inputs[index - 1].player_speed != input.player_speed
                  ? ",player-speed=" + std::to_string(input.player_speed)
-                 : "") +
-            (index == 1 || tas_recording_inputs[index - 1].camera_angle != input.camera_angle
-                 ? ",camera-angle=" + std::to_string(input.camera_angle)
-                 : "") +
-            (index == 1 || tas_recording_inputs[index - 1].camera_zoom != input.camera_zoom
-                 ? ",camera-zoom=" + std::to_string(input.camera_zoom)
                  : "");
+        // (index == 1 || tas_recording_inputs[index - 1].camera_angle != input.camera_angle
+        //      ? ",camera-angle=" + std::to_string(input.camera_angle)
+        //      : "") +
+        // (index == 1 || tas_recording_inputs[index - 1].camera_zoom != input.camera_zoom
+        //      ? ",camera-zoom=" + std::to_string(input.camera_zoom)
+        //      : "");
 
         frame_output_file << std::to_string((input.last_frame - input.first_frame) + 1) + controls
                           << std::endl;
