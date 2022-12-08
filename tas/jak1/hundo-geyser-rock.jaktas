@@ -1,0 +1,79 @@
+marker=new-game-start
+
+# First inputs after portal
+6,player-angle=23000,player-speed=1
+20,L1
+20,X
+24,player-angle=22800
+20,L1
+20,X
+24
+20,L1
+20,X
+17
+
+# Launch up to first ledge
+6,X,player-angle=27000
+31
+23,Square,player-angle=26900
+2,player-angle=19500
+20,L1
+20,X
+23
+20,L1,player-angle=19000
+20,X
+27
+14,Square,player-angle=16000
+
+# After collecting 1st cell
+11,player-angle=17000
+20,L1
+20,X
+25
+3,player-angle=25000
+20,L1
+20,X
+25
+2,player-angle=29500
+20,L1
+20,X
+21
+
+# Boosted to blue eco down off edge
+9,player-angle=25000,player-speed=0.3
+9,Square,player-angle=34000,player-speed=1
+1,X
+66
+25,Square,player-angle=40000
+17,player-angle=6500
+20,L1,
+20,X
+24
+20,Square,player-angle=-2500
+25,X
+27,Square,X,player-angle=0
+24
+
+# Back on ledge moving towards scout flies
+3,player-angle=4500
+20,L1,
+20,X
+29
+10,Square
+10,X
+27
+6,player-angle=-950
+# TODO Unreliable scout fly pickups here
+20,L1,
+20,X
+26,player-angle=-19000
+40,Square
+1,player-angle=-32000
+36,Square
+7,player-angle=-16000
+20,L1,
+20,X
+129,player-speed=0
+
+# After collecting 2nd cell
+1,Circle
