@@ -385,6 +385,13 @@
 
               (set! (-> pad stick0-speed) (-> *pc-tas-input-frame* player-speed))
               (set! (-> pad button0) (-> *pc-tas-input-frame* button0))
+
+              ;; If we're in a movie, forcibly set everything to 0 for consistent behaviour
+              (when (-> *pc-settings* movie?)
+                (set! (-> pad button0) 0)
+                (set! (-> pad stick0-dir) 0.0)
+                (set! (-> pad stick0-speed) 0.0)
+                )
               )
             )
            ;; if the pad was changed or stick0 pushed, update the last changed time.

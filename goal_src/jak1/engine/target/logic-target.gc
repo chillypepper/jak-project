@@ -504,9 +504,9 @@
       :vector
       (new 'static 'inline-array vector 4
         (new 'static 'vector :x 1.0)
-        (new 'static 'vector :y 0.0)
+        (new 'static 'vector :y 1.0)
         (new 'static 'vector :z 1.0)
-        (new 'static 'vector :w 0.0)
+        (new 'static 'vector :w 1.0)
         )
       ))
     )

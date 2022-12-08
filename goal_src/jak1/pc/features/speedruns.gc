@@ -26,7 +26,9 @@
       )
     (else
       ;; if we're running a TAS reset the seed for consistent rng, but keep the frame rate
+      ;; TODO These aren't enough to get consistent rng, may not be a problem but worth noting
       (rand-vu-init 1.418091058731079)
+      (set! (-> *random-generator* seed) #x666edd1e)
       )
     )
   ;; skip intro cutscene

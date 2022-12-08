@@ -1304,8 +1304,8 @@ static void UpdatePlayPos() {
   // NOTE The way we calculate frames is a bit rough, assumes sounds are 30fps and game is 60fps
   TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
   if (tas_data.tas_frame != 0) {
-    gRealVAGClock =
-        (4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate)) * ((tas_data.frame_rate / 2) / 30);
+    gRealVAGClock = (4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate)) *
+                    std::max((u32)1, ((tas_data.frame_rate / 2) / 30));
   }
 }
 

@@ -126,11 +126,13 @@ void tas_end_inputs() {
   for (auto result : tas_results) {
     // TODO Loop through inputs here for things that aren't stored in results, namely markers
     // TODO Might also be good to log the start and ends of files?
-    json["key-frames"].push_back({{"tas-frame", result.tas_frame},
-                                  {"fuel-cell-total", result.fuel_cell_total},
-                                  {"money-total", result.money_total},
-                                  {"buzzer-total", result.buzzer_total},
-                                  {"money-total", result.money_total}});
+    json["key-frames"].push_back({
+        {"tas-frame", result.tas_frame},
+        {"fuel-cell-total", result.fuel_cell_total},
+        {"money-total", result.money_total},
+        {"buzzer-total", result.buzzer_total},
+        {"money-total", result.money_total},
+    });
   }
 
   if (save_results) {

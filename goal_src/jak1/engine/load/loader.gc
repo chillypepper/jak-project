@@ -996,11 +996,16 @@
               (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0)))
                 (ja-no-eval :num! (seek!) :frame-num f0-14)
                 )
-              (cond 
+              (cond
                 ((= (-> *pc-tas-input-frame* skip-spool-movies) 1)
                   (set! v0-39 (the-as int f28-0)))
                 (else
-                  (set! v0-39 (current-str-pos spool-sound)))
+                  ;; TODO Guarantee we see at least the last 2 frames for logic to catch up - not sure if this helps
+                  (if (< v0-39 (- (the-as int f28-0) 1))
+                    (set! v0-39 (min (current-str-pos spool-sound) (- (the-as int f28-0) 1)))
+                    (set! v0-39 (the-as int f28-0))
+                    )
+                  )
                 )
               (set! sv-72 v0-39)
               )
@@ -1014,7 +1019,7 @@
           )
         )
       )
-    (cond 
+    (cond
       ((= (-> *pc-tas-input-frame* skip-spool-movies) 1)
         (set! spool-part (-> arg0 parts)))
       (else
