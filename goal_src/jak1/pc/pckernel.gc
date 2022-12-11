@@ -397,6 +397,20 @@
     (set! (-> *pc-tas-input-frame-results* input-player-speed) (-> *cpad-list* cpads 0 stick0-speed))
     (set! (-> *pc-tas-input-frame-results* input-camera-angle) (camera-angle))
     (set! (-> *pc-tas-input-frame-results* input-camera-zoom) 0.0)
+    (set-vector!
+      (-> *pc-tas-input-frame-results* player-position)
+      (-> *target* control trans x)
+      (-> *target* control trans y)
+      (-> *target* control trans z)
+      (-> *target* control trans w)
+      )
+    (set-vector!
+      (-> *pc-tas-input-frame-results* camera-position)
+      (-> *math-camera* trans x)
+      (-> *math-camera* trans y)
+      (-> *math-camera* trans z)
+      (-> *math-camera* trans w)
+      )
     (pc-tas-update-frame-results)
     )
 

@@ -1,5 +1,6 @@
 #include "tas_tools.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -9,8 +10,6 @@
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/Ptr.h"
-
-#include "third-party/json.hpp"
 
 // Keep references to the structs shared with GOAL
 u64 tas_input_frame_goal_ptr = 0;
@@ -88,14 +87,17 @@ void tas_reset_frame_data() {
 
   tas_update_goal_input_frame();
 
-  *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c() = {.tas_frame = 0,
-                                                                          .fuel_cell_total = 0,
-                                                                          .money_total = 0,
-                                                                          .buzzer_total = 0,
-                                                                          .input_player_angle = 0,
-                                                                          .input_player_speed = 0,
-                                                                          .input_camera_angle = 0,
-                                                                          .input_camera_zoom = 0};
+  *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c() = {
+      .tas_frame = 0,
+      .fuel_cell_total = 0,
+      .money_total = 0,
+      .buzzer_total = 0,
+      .input_player_angle = 0,
+      .input_player_speed = 0,
+      .input_camera_angle = 0,
+      .input_camera_zoom = 0,
+      .player_position = {.x = 0, .y = 0, .z = 0, .w = 0},
+      .camera_position = {.x = 0, .y = 0, .z = 0, .w = 0}};
 }
 
 void tas_init() {
@@ -121,18 +123,35 @@ void tas_init() {
 
 void tas_end_inputs() {
   nlohmann::json json;
-  json["key-frames"] = nlohmann::json::array();
+  u32 index = 0;
+  json["all-data"] = nlohmann::json::array();
+  json["collectable-frames"] = nlohmann::json::array();
 
   for (auto result : tas_results) {
     // TODO Loop through inputs here for things that aren't stored in results, namely markers
     // TODO Might also be good to log the start and ends of files?
-    json["key-frames"].push_back({
+    json["all-data"].push_back({
         {"tas-frame", result.tas_frame},
         {"fuel-cell-total", result.fuel_cell_total},
         {"money-total", result.money_total},
         {"buzzer-total", result.buzzer_total},
-        {"money-total", result.money_total},
+        {"player-position", result.player_position.toJSON()},
+        {"camera-position", result.camera_position.toJSON()},
     });
+
+    if (index == 0 || index == tas_results.size() - 1 ||
+        result.fuel_cell_total != tas_results[index - 1].fuel_cell_total ||
+        result.money_total != tas_results[index - 1].money_total ||
+        result.buzzer_total != tas_results[index - 1].buzzer_total) {
+      json["collectable-frames"].push_back({
+          {"tas-frame", result.tas_frame},
+          {"fuel-cell-total", result.fuel_cell_total},
+          {"money-total", result.money_total},
+          {"buzzer-total", result.buzzer_total},
+      });
+    }
+
+    ++index;
   }
 
   if (save_results) {
@@ -153,26 +172,21 @@ void tas_update_frame_results() {
     TASInputFrameResultsGOAL results =
         *Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c();
 
-    if (tas_results.size()) {
-      size_t last_index = tas_results.size() - 1;
+    size_t last_index = tas_results.size() - 1;
 
-      if (results.fuel_cell_total != tas_results[last_index].fuel_cell_total ||
-          results.money_total != tas_results[last_index].money_total ||
-          results.buzzer_total != tas_results[last_index].buzzer_total) {
-        lg::debug("[TAS Playback] Frame results" +
-                  (tas_input_frame == tas_inputs[tas_input_index].first_frame &&
-                           tas_inputs[tas_input_index].marker != ""
-                       ? " (" + tas_inputs[tas_input_index].marker + ")"
-                       : "") +
-                  ": " +
-                  Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c()->toString());
-
-        tas_results.push_back(results);
-      }
-    } else {
-      // Store the first frame every time
-      tas_results.push_back(results);
+    // Quick console log whenever collectable counts change
+    if (tas_results.size() == 0 ||
+        results.fuel_cell_total != tas_results[last_index].fuel_cell_total ||
+        results.money_total != tas_results[last_index].money_total ||
+        results.buzzer_total != tas_results[last_index].buzzer_total) {
+      std::string output =
+          Ptr<TASInputFrameResultsGOAL>(tas_input_frame_results_goal_ptr).c()->toJSON().dump();
+      std::replace(output.begin(), output.end(), '{', '<');
+      std::replace(output.begin(), output.end(), '}', '>');
+      lg::debug("[TAS Playback] Collectables updated: " + output);
     }
+
+    tas_results.push_back(results);
 
     ++tas_input_frame;
 
@@ -194,7 +208,8 @@ void tas_update_frame_results() {
 
     size_t last_index = tas_recording_inputs.size() - 1;
 
-    if (last_index != -1 && tas_recording_inputs[last_index].button0 == results.input_button0 &&
+    if (tas_recording_inputs.size() != 0 &&
+        tas_recording_inputs[last_index].button0 == results.input_button0 &&
         tas_recording_inputs[last_index].player_angle == results.input_player_angle &&
         tas_recording_inputs[last_index].player_speed == results.input_player_speed &&
         tas_recording_inputs[last_index].camera_angle == results.input_camera_angle &&
@@ -203,7 +218,9 @@ void tas_update_frame_results() {
     } else {
       u64 frame = tas_recording_inputs.size() == 0 ? 1 : tas_inputs[last_index].last_frame + 1;
 
-      tas_recording_inputs.push_back({.button0 = results.input_button0,
+      tas_recording_inputs.push_back({.first_frame = frame,
+                                      .last_frame = frame,
+                                      .button0 = results.input_button0,
                                       .player_angle = results.input_player_angle,
                                       .player_speed = results.input_player_speed,
                                       .camera_angle = results.input_camera_angle,

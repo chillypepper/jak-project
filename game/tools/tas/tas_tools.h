@@ -8,10 +8,23 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/system/newpad.h"
 
+#include "third-party/json.hpp"
+
 namespace TAS {
 struct TASKeyValue {
   std::string key;
   std::string value;
+};
+
+struct TASGoalVector {
+  float x;
+  float y;
+  float z;
+  float w;
+
+  nlohmann::json toJSON() {
+    return nlohmann::json::object({{"x", x}, {"y", y}, {"z", z}, {"w", w}});
+  }
 };
 
 struct TASInput {
@@ -32,22 +45,6 @@ struct TASInput {
   float player_speed;
   float camera_angle;
   float camera_zoom;
-
-  // Quick debug output just to make sure things look right
-  // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
-  std::string toString() {
-    return "@^" + std::string("\"first_frame\": \"") + std::to_string(first_frame) + "\"," +
-           std::string("\"last_frame\": \"") + std::to_string(last_frame) + "\"," +
-           std::string("\"file_name\": \"") + std::string(file_name) + "\"," +
-           std::string("\"file_line\": \"") + std::to_string(file_line) + "\"," +
-           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +
-           std::string("\"skip_spool_movies\": \"") + std::to_string(skip_spool_movies) + "\"," +
-           std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
-           std::string("\"player_angle\": \"") + std::to_string(player_angle) + "\"," +
-           std::string("\"player_speed\": \"") + std::to_string(player_speed) + "\"," +
-           std::string("\"camera_angle\": \"") + std::to_string(camera_angle) + "\"," +
-           std::string("\"camera_zoom\": \"") + std::to_string(camera_zoom) + "\"," + "@";
-  }
 };
 
 // Matches tas-input-frame in tas.gc
@@ -61,20 +58,6 @@ struct TASInputFrameGOAL {
   float player_speed;
   float camera_angle;
   float camera_zoom;
-
-  // Quick debug output just to make sure things look right
-  // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
-  std::string toString() {
-    return "@^" + std::string("\"tas_frame\": \"") + std::to_string(tas_frame) + "\"," +
-           std::string("\"frame_rate\": \"") + std::to_string(frame_rate) + "\"," +
-           std::string("\"skip_spool_movies\": \"") + std::to_string(skip_spool_movies) + "\"," +
-           std::string("\"is_recording_input\": \"") + std::to_string(is_recording_input) + "\"," +
-           std::string("\"button0\": \"") + std::to_string(button0) + "\"," +
-           std::string("\"player_angle\": \"") + std::to_string(player_angle) + "\"," +
-           std::string("\"player_speed\": \"") + std::to_string(player_speed) + "\"," +
-           std::string("\"camera_angle\": \"") + std::to_string(camera_angle) + "\"," +
-           std::string("\"camera_zoom\": \"") + std::to_string(camera_zoom) + "@";
-  };
 };
 
 // Matches tas-input-frame-results in tas.gc
@@ -88,19 +71,24 @@ struct TASInputFrameResultsGOAL {
   float input_player_speed;
   float input_camera_angle;
   float input_camera_zoom;
+  float pad1;
+  float pad2;
+  TASGoalVector player_position;
+  TASGoalVector camera_position;
 
-  // Quick debug output just to make sure things look right
-  // TODO For some reason print braces causes a crash, so I use @^ = { and ,@ = } to get valid JSON
-  std::string toString() {
-    return "@^" + std::string("\"tas_frame\": \"") + std::to_string(tas_frame) + "\"," +
-           std::string("\"fuel_cell_total\": \"") + std::to_string(fuel_cell_total) + "\"," +
-           std::string("\"money_total\": \"") + std::to_string(money_total) + "\"," +
-           std::string("\"buzzer_total\": \"") + std::to_string(buzzer_total) + "\"," +
-           std::string("\"input_button0\": \"") + std::to_string(input_button0) + "\"," +
-           std::string("\"input_player_angle\": \"") + std::to_string(input_player_angle) + "\"," +
-           std::string("\"input_player_speed\": \"") + std::to_string(input_player_speed) + "\"," +
-           std::string("\"input_camera_angle\": \"") + std::to_string(input_camera_angle) + "\"," +
-           std::string("\"input_camera_zoom\": \"") + std::to_string(input_camera_zoom) + "@";
+  nlohmann::json toJSON() {
+    return nlohmann::json::object({
+        {"tas-frame", tas_frame},
+        {"fuel-cell-total", fuel_cell_total},
+        {"money-total", money_total},
+        {"buzzer-total", buzzer_total},
+        {"input-button0", input_button0},
+        {"input-player-angle", input_player_angle},
+        {"input-player-speed", input_player_speed},
+        {"input-camera-angle", input_camera_angle},
+        {"input-camera-zoom", player_position.toJSON()},
+        {"input-camera-zoom", camera_position.toJSON()},
+    });
   }
 };
 
