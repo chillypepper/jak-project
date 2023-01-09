@@ -31,8 +31,8 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-fort-lift-plat fort-lift-plat 0 3
-              ((1 (meters 999999)))
+(defskelgroup skel-fort-lift-plat fort-lift-plat fort-lift-plat-lod0-jg fort-lift-plat-idle-ja
+              ((fort-lift-plat-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 -2 -8 15)
               )
 
@@ -362,20 +362,16 @@
   )
 
 ;; failed to figure out what this is:
-(set-subtask-hook!
-  *game-info*
-  2
-  3
-  (lambda () (with-pp
-               (until #f
-                 (sound-play "fortress-alarm")
-                 (let ((gp-1 (-> pp clock frame-counter)))
-                   (until (>= (- (-> pp clock frame-counter) gp-1) (seconds 1))
-                     (suspend)
-                     )
+(set-subtask-hook! *game-info* 2 3 (lambda :behavior task-manager
+                                     ()
+                                     (until #f
+                                       (sound-play "fortress-alarm")
+                                       (let ((gp-1 (-> self clock frame-counter)))
+                                         (until (>= (- (-> self clock frame-counter) gp-1) (seconds 1))
+                                           (suspend)
+                                           )
+                                         )
+                                       )
+                                     (the-as object #f)
+                                     )
                    )
-                 )
-               (the-as object #f)
-               )
-          )
-  )

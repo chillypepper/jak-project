@@ -464,8 +464,8 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-warp-gate warp-gate 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-warp-gate warp-gate warp-gate-lod0-jg warp-gate-idle-ja
+              ((warp-gate-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 3 0 4)
               :origin-joint-index 3
               )
@@ -634,16 +634,16 @@
                       )
                 )
             (let ((v1-51 gp-0))
-              (set! (-> v1-51 width) (the float (the-as float #x154)))
+              (set! (-> v1-51 width) (the float 340))
               )
             (let ((v1-52 gp-0))
-              (set! (-> v1-52 height) (the float (the-as float #x50)))
+              (set! (-> v1-52 height) (the float 80))
               )
             (let ((v1-53 gp-0))
               (set! (-> v1-53 scale) 0.9)
               )
             (set! (-> gp-0 flags) (font-flags shadow kerning large))
-            (print-game-text (lookup-text! *common-text* (game-text-id text-x182) #f) gp-0 #f 44 320)
+            (print-game-text (lookup-text! *common-text* (game-text-id text-x182) #f) gp-0 #f 44 (bucket-id progress))
             )
           )
         )
@@ -1159,8 +1159,8 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-air-train air-train 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-air-train air-train air-train-lod0-jg air-train-idle-ja
+              ((air-train-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 2 -2 12.5)
               :origin-joint-index 3
               )
@@ -2499,7 +2499,3 @@
                    :save #t
                    )
                  )
-
-
-
-

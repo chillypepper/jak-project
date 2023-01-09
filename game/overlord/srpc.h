@@ -43,7 +43,8 @@ enum class Jak1SoundCommand : u16 {
   SET_EAR_TRANS = 19,
   SHUTDOWN = 20,
   LIST_SOUNDS = 21,
-  UNLOAD_MUSIC = 22
+  UNLOAD_MUSIC = 22,
+  MIRROR_MODE = 201,
 };
 
 enum class Jak2SoundCommand : u16 {
@@ -152,7 +153,7 @@ struct SoundRpcSetEarTrans {
 
 struct SoundRpc2SetEarTrans {
   Vec3w ear_trans1;
-  Vec3w ear_trans2;
+  Vec3w ear_trans0;
   Vec3w cam_trans;
   s32 cam_angle;
 };
@@ -193,6 +194,10 @@ struct SoundRpcSetMidiReg {
   s32 value;
 };
 
+struct SoundRpcSetMirrror {
+  u8 value;
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   union {
@@ -217,6 +222,7 @@ struct SoundRpcCommand {
     SoundRpcSetParamCommand param;
     SoundRpcStereoMode stereo_mode;
     SoundRpcSetMidiReg midi_reg;
+    SoundRpcSetMirrror mirror;
     u8 max_size[0x4C];  // Temporary
   };
 };

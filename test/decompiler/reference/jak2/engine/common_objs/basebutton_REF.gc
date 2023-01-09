@@ -67,7 +67,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-generic-button mtn-dice-button 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-generic-button mtn-dice-button mtn-dice-button-lod0-jg mtn-dice-button-idle-ja
+              ((mtn-dice-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for method 37 of type basebutton
 ;; INFO: Used lq/sq
@@ -484,7 +487,7 @@
     )
   (set! (-> obj timeout) (res-lump-float arg0 'timeout))
   (if (not (logtest? (-> obj button-status) (button-status button-status-1)))
-      (nav-mesh-connect-from-ent (the-as entity-nav-mesh obj))
+      (nav-mesh-connect-from-ent obj)
       )
   (prepare-trigger-event! obj)
   (basebutton-method-33 obj)

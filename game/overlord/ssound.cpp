@@ -13,7 +13,7 @@
 using namespace iop;
 
 Sound gSounds[64];
-Curve gCurve[12];  // TODO verify count
+Curve gCurve[16];
 VolumePair gPanTable[361];
 
 Vec3w gEarTrans[2];
@@ -26,6 +26,8 @@ s32 gMusicFadeDir = 0;
 
 u32 gStreamSRAM = 0;
 u32 gTrapSRAM = 0;
+
+u8 gMirrorMode = 0;
 
 s32 gSema;
 
@@ -285,15 +287,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   s32 min = fo_min << 8;
   s32 max = fo_max << 8;
 
-  if (max < xdiff) {
-    return 0;
-  }
-
-  if (max < ydiff) {
-    return 0;
-  }
-
-  if (max < zdiff) {
+  if (max < xdiff || max < ydiff || max < zdiff) {
     return 0;
   }
 
@@ -359,6 +353,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
 s32 CalculateAngle(Vec3w* trans) {
   s32 diffX = gCamTrans.x - trans->x;
   s32 diffZ = gCamTrans.z - trans->z;
+  s32 angle;
 
   s32 lookupX = diffX;
   s32 lookupZ = diffZ;
@@ -375,7 +370,6 @@ s32 CalculateAngle(Vec3w* trans) {
     return 0;
   }
 
-  s32 angle;
   if (lookupZ >= lookupX) {
     angle = atan_table[(lookupX << 8) / lookupZ];
 
@@ -404,7 +398,13 @@ s32 CalculateAngle(Vec3w* trans) {
     }
   }
 
-  return (angle - gCamAngle + 720) % 360;
+  angle = (angle - gCamAngle + 720) % 360;
+
+  if (gMirrorMode) {
+    angle = ((180 - angle) + 180) % 360;
+  }
+
+  return angle;
 }
 
 s32 GetVolume(Sound* sound) {
@@ -494,13 +494,13 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-void SetEarTrans(Vec3w* ear_trans1, Vec3w* ear_trans2, Vec3w* cam_trans, s32 cam_angle) {
+void SetEarTrans(Vec3w* ear_trans0, Vec3w* ear_trans1, Vec3w* cam_trans, s32 cam_angle) {
   s32 tick = snd_GetTick();
   u32 delta = tick - sLastTick;
   sLastTick = tick;
 
-  gEarTrans[0] = *ear_trans1;
-  gEarTrans[1] = *ear_trans2;
+  gEarTrans[0] = *ear_trans0;
+  gEarTrans[1] = *ear_trans1;
   gCamTrans = *cam_trans;
   gCamAngle = cam_angle;
 
@@ -543,10 +543,10 @@ void PrintActiveSounds() {
   }
 }
 
-void SetCurve(s32 curve, s32 fallof, s32 ease) {
-  gCurve[curve].unk1 = ease << 1;
-  gCurve[curve].unk2 = fallof + ease * -3;
-  gCurve[curve].unk3 = (ease - fallof) + -0x1000;
+void SetCurve(s32 curve, s32 falloff, s32 ease) {
+  gCurve[curve].unk1 = ease * 2;
+  gCurve[curve].unk2 = falloff - 3 * ease;
+  gCurve[curve].unk3 = ease - falloff - 0x1000;
   gCurve[curve].unk4 = 0x1000;
 }
 

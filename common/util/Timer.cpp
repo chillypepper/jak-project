@@ -1,5 +1,7 @@
 #include "Timer.h"
 
+#include "common/common_types.h"
+
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -37,7 +39,7 @@ int Timer::clock_gettime_monotonic(struct timespec* tv) const {
 #endif
 
 void Timer::clock_get_platform_timer(struct timespec* tv) const {
-#ifdef __linux__
+#ifdef OS_POSIX
   clock_gettime(CLOCK_MONOTONIC, tv);
 #elif _WIN32
   clock_gettime_monotonic(tv);

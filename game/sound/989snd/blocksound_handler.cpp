@@ -10,21 +10,6 @@
 namespace snd {
 std::array<s8, 32> g_block_reg{};
 
-void blocksound_handler::init() {
-  m_next_grain = 0;
-  m_countdown = m_sfx.grains[0]->delay();
-
-  // if (m_sfx.d.Flags & 2) {
-  //   fmt::print("solo flag\n");
-  //   m_done = true;
-  //   return;
-  // }
-
-  while (m_countdown <= 0 && !m_done) {
-    do_grain();
-  }
-}
-
 bool blocksound_handler::tick() {
   m_voices.remove_if([](std::weak_ptr<blocksound_voice>& p) { return p.expired(); });
 
@@ -140,8 +125,8 @@ void blocksound_handler::set_vol_pan(s32 vol, s32 pan) {
       }
 
       auto volume = m_vm.make_volume(127, 0, m_cur_volume, m_cur_pan, voice->g_vol, voice->g_pan);
-      auto left = m_vm.adjust_vol_to_group(volume.left, m_sfx.d.VolGroup);
-      auto right = m_vm.adjust_vol_to_group(volume.right, m_sfx.d.VolGroup);
+      auto left = m_vm.adjust_vol_to_group(volume.left, m_group);
+      auto right = m_vm.adjust_vol_to_group(volume.right, m_group);
 
       voice->set_volume(left >> 1, right >> 1);
     }
