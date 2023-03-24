@@ -451,13 +451,8 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
           }
         }
 
-        // TODO Find a nicer way of writing this. Ensure rotation doesn't go outside limits
+        // TODO Find a nicer way of outputting this. Ensure rotation doesn't go outside limits
         float angle_after_camera = (input.player_angle + input.camera_angle);
-        if (angle_after_camera < -32768) {
-          angle_after_camera = (angle_after_camera * -1) + (angle_after_camera + 32768);
-        } else if (angle_after_camera > 32768) {
-          angle_after_camera = (angle_after_camera * -1) + (angle_after_camera - 32768);
-        }
 
         controls +=
             (index == 1 || tas_recording_inputs[index - 1].player_angle != angle_after_camera

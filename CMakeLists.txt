@@ -33,8 +33,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fcxx-exceptions \
         -fexceptions \
         -fdiagnostics-color=always \
-        -fno-fast-math \
-        -ffp-contract=on \
         -std=c++17 \
         -mavx \
         -Wall \

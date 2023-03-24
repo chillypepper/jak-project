@@ -10,6 +10,7 @@
 #include "common/util/Assert.h"
 
 #include "game/kernel/common/Ptr.h"
+#include "game/tools/tas/tas_tools.h"
 
 namespace Mips2C {
 
@@ -68,7 +69,10 @@ struct Rng {
     // uninitialized register, and in our port this corresponds to some random value on the stack.
     // If we get unlucky this can end up being the current value in r32, and the random generator
     // will get stuck outputting 1 for a while.
-    r32 ^= extra_random_generator();
+    TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
+    if (tas_data.tas_frame == 0) {
+      r32 ^= extra_random_generator();
+    }
     R = from23_bits(r32);
   }
 

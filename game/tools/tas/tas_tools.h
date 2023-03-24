@@ -86,8 +86,9 @@ struct TASInputFrameResultsGOAL {
         {"input-player-angle", input_player_angle},
         {"input-player-speed", input_player_speed},
         {"input-camera-angle", input_camera_angle},
-        {"input-camera-zoom", player_position.toJSON()},
-        {"input-camera-zoom", camera_position.toJSON()},
+        {"input-camera-zoom", input_camera_zoom},
+        {"player-position", player_position.toJSON()},
+        {"camera-position", camera_position.toJSON()},
     });
   }
 };
