@@ -102,18 +102,25 @@
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
-  (case rate
-    ((50)
-      (set! (-> obj target-fps) rate)
-      (set-game-setting! obj 'video-mode 'pal)
-      )
-    ((60)
-      (set! (-> obj target-fps) rate)
-      (set-game-setting! obj 'video-mode 'ntsc)
+
+  (set! (-> obj target-fps) rate)
+
+  (cond
+    ((= (-> *pc-tas-input-frame* tas-frame) 0)
+      (case rate
+        ((50)
+          (set-game-setting! obj 'video-mode 'pal)
+          )
+        ((60)
+          (set-game-setting! obj 'video-mode 'ntsc)
+          )
+        (else
+          (set-game-setting! obj 'video-mode 'custom)
+          )
+        )
       )
     (else
-      (set! (-> obj target-fps) rate)
-      (set-game-setting! obj 'video-mode 'custom)
+      (set-game-setting! obj 'video-mode 'ntsc)
       )
     )
 
@@ -139,6 +146,13 @@
   (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
+
+  ;; TODO We only do this when a cutscene isn't playing for TAS runs
+  (if (or (= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
+    (if (!= (-> obj target-fps) (-> *pc-tas-input-frame* frame-rate))
+      (set-frame-rate! obj (the-as int (-> *pc-tas-input-frame* frame-rate)))
+      )
+    )
 
   (when (-> obj use-vis?)
     (if (= (get-game-setting! obj 'aspect-ratio) 'aspect4x3)
@@ -267,6 +281,9 @@
   "Update settings to/from PC kernel. Call this at the start of every frame.
    This will update things like the aspect-ratio, which will be used for graphics code later."
 
+  ;; always fetch the latest TAS frame inputs at the start of the frame
+  (pc-tas-update-goal-input-frame)
+
   (update-from-os obj)
   (update-to-os obj)
 
@@ -297,6 +314,40 @@
   (update-cheats obj)
   ;; music.
   (update-music-log obj)
+
+  ;; only update the TAS frame when a cutscene isn't playing to get accurate frame timings for the TAS
+  (when (and (or (!= (-> *pc-tas-input-frame* tas-frame) 0) (!= (-> *pc-tas-input-frame* is-recording-tas) 0)) (not (-> obj movie?)))
+    (set! (-> *pc-tas-input-frame-results* tas-frame) (-> *pc-tas-input-frame* tas-frame))
+    (set! (-> *pc-tas-input-frame-results* fuel-cell-total) (-> *game-info* fuel))
+    (set! (-> *pc-tas-input-frame-results* money-total) (-> *game-info* money-total))
+    (set! (-> *pc-tas-input-frame-results* buzzer-total) (-> *game-info* buzzer-total))
+    (set! (-> *pc-tas-input-frame-results* input-button0) (-> *cpad-list* cpads 0 button0))
+
+    ;; TODO Set the calculated direction (accounting for mirror mode, and for camera angle during recording)
+    (if (pc-cheats? (-> *pc-settings* cheats) mirror)
+      (set! (-> *pc-tas-input-frame-results* input-player-angle) (* -1.0 (-> *cpad-list* cpads 0 stick0-dir)))
+      (set! (-> *pc-tas-input-frame-results* input-player-angle) (-> *cpad-list* cpads 0 stick0-dir))
+      )
+
+    (set! (-> *pc-tas-input-frame-results* input-player-speed) (-> *cpad-list* cpads 0 stick0-speed))
+    (set! (-> *pc-tas-input-frame-results* input-camera-angle) (camera-angle))
+    (set! (-> *pc-tas-input-frame-results* input-camera-zoom) 0.0)
+    (set-vector!
+      (-> *pc-tas-input-frame-results* player-position)
+      (-> *target* control trans x)
+      (-> *target* control trans y)
+      (-> *target* control trans z)
+      (-> *target* control trans w)
+      )
+    (set-vector!
+      (-> *pc-tas-input-frame-results* camera-position)
+      (-> *math-camera* trans x)
+      (-> *math-camera* trans y)
+      (-> *math-camera* trans z)
+      (-> *math-camera* trans w)
+      )
+    (pc-tas-update-frame-results)
+    )
 
   (none))
 
@@ -715,7 +766,7 @@
 
 (defmethod handle-output-settings pc-settings ((obj pc-settings) (file file-stream))
   "handle the text writing output for the 'settings' group"
-  
+
   (format file "  (fps ~D)~%" (-> obj target-fps))
   (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
   (format file "  (aspect-state ~A ~D ~D ~A)~%" (get-game-setting! obj 'aspect-ratio)
@@ -906,8 +957,3 @@
 (define *entity-debug-inspect* (new 'debug 'entity-debug-inspect))
 
 ) ;; when debug_segment
-
-
-
-
-

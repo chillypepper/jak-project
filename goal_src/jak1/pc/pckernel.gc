@@ -24,110 +24,24 @@
     (('aspect-ratio)
       (set! (-> *setting-control* default aspect-ratio) value)
       )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
     )
-  (none))
+  )
 
-(defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
-  "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
-  (let ((aspect (/ (the float aw) (the float ah))))
-    (set-aspect-ratio! obj aspect)
-    (set! (-> obj aspect-custom-x) aw)
-    (set! (-> obj aspect-custom-y) ah)
-    (set! (-> obj aspect-ratio-auto?) #f)
-    (set! (-> obj use-vis?) #f)
-    )
-  (none))
-
-(defmethod set-aspect-ratio! pc-settings ((obj pc-settings) (aspect float))
-  "set the aspect ratio used for rendering."
-  (set! (-> obj aspect-ratio) aspect)
-  (set! (-> obj aspect-ratio-scale) (/ aspect ASPECT_4X3))
-  (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
-  (none))
-
-(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
-  "set the aspect ratio used for rendering."
-  (pc-set-window-lock lock)
-  (set! (-> obj window-lock?) lock))
-
-(defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
-  "set the target framerate."
-  (pc-set-frame-rate rate)
-  (if (and (!= 'fullscreen (-> obj display-mode))
-           (!= (pc-get-screen-rate -1) rate))
-      (set! (-> obj vsync?) #f))
-  (case rate
-    ((50)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'pal)
+(defmethod get-game-setting! pc-settings-jak1 ((obj pc-settings-jak1) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* default video-mode)
       )
-    ((60)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'ntsc)
+    (('aspect-ratio)
+      (-> *setting-control* default aspect-ratio)
       )
     (else
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) 'custom)
-      )
+      (format #t "unknown setting  ~A to get-game-setting!" setting)
+      #f)
     )
-  (set! (-> *setting-control* current video-mode) #f)
-
-  rate)
-
-(defmethod set-monitor! pc-settings ((obj pc-settings) (monitor int))
-  "set the monitor to use when in fullscreen/borderless"
-  (set! (-> obj monitor) monitor)
-  (none))
-
-(defmethod commit-to-file pc-settings ((obj pc-settings))
-  "commits the current settings to the file"
-  ;; auto load settings if available
-
-  (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
-  (pc-mkdir-file-path *pc-temp-string-1*)
-  (write-to-file obj *pc-temp-string-1*)
-  (none))
-
-(defmethod update-from-os pc-settings ((obj pc-settings))
-  "Update settings from the C kernel to GOAL."
-
-  (set! (-> obj os) (pc-get-os))
-  (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
-  (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-
-  (when (-> obj use-vis?)
-    (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
-        (set-aspect-ratio! obj ASPECT_4X3)
-        (set-aspect-ratio! obj ASPECT_16X9)
-        )
-    )
-
-  (unless (or (zero? (-> obj real-width)) (zero? (-> obj real-height)))
-  (let ((win-aspect (/ (the float (-> obj real-width)) (the float (-> obj real-height)))))
-    (cond
-      ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
-       ;; the window determines the resolution
-       (set-aspect-ratio! obj win-aspect)
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (-> obj real-height))
-       )
-      ((> win-aspect (-> obj aspect-ratio))
-       ;; too wide
-       (set! (-> obj lbox-width) (the int (* (the float (-> obj real-height)) (-> obj aspect-ratio))))
-       (set! (-> obj lbox-height) (-> obj real-height))
-       )
-      ((< win-aspect (-> obj aspect-ratio))
-       ;; too tall
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (the int (/ (the float (-> obj real-width)) (-> obj aspect-ratio))))
-       )
-      (else
-       ;; just right
-       (set! (-> obj lbox-width) (-> obj real-width))
-       (set! (-> obj lbox-height) (-> obj real-height))
-       )
-      )
-    ))
+  )
 
 (defmethod set-game-language! pc-settings-jak1 ((obj pc-settings-jak1) (lang language-enum))
   (set! (-> *setting-control* default language) lang)
@@ -137,186 +51,7 @@
   (-> *setting-control* default language)
   )
 
-  ;; set fullscreen to what we want
-  (pc-set-fullscreen (-> obj display-mode) (-> obj monitor))
-
-  ;; set window size and fps automatically if the window lock is enabled.
-  (when (-> obj window-lock?)
-    (pc-set-vsync (-> obj vsync?))
-
-    (when (!= 'fullscreen (-> obj display-mode))
-        (if (< (pc-get-screen-rate -1) (-> obj target-fps))
-            (pc-set-vsync #f))
-        (pc-set-frame-rate (-> obj target-fps)))
-    )
-  ;; do game resolution
-  (if (= (-> obj display-mode) 'windowed)
-      (pc-set-game-resolution (-> obj real-width) (-> obj real-height))
-      (pc-set-game-resolution (-> obj width) (-> obj height)))
-
-  ;; set msaa sample rate. if invalid, just reset to 4.
-  (let ((valid? #f))
-      (dotimes (i 31)
-        (if (= (-> obj gfx-msaa) (ash 1 i))
-            (true! valid?))
-        )
-
-      (if (not valid?) (set! (-> obj gfx-msaa) 4))
-      (pc-set-msaa (-> obj gfx-msaa))
-      )
-
-  (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
-
-  (when #t ;; (not (-> obj ps2-lod-dist?))
-    (pc-renderer-tree-set-lod (pc-renderer-tree-type tfrag3) (-> obj lod-force-tfrag))
-    (pc-renderer-tree-set-lod (pc-renderer-tree-type tie3) (-> obj lod-force-tie))
-    )
-
-  (when *debug-segment*
-    (pc-set-collision *collision-renderer*)
-    (pc-set-collision-wireframe *collision-wireframe*)
-    (pc-set-collision-mode *collision-mode*)
-    )
-
-  (pc-sound-set-flava-hack (-> obj flava-hack))
-  (let ((fade-hack 0))
-    (unless (-> obj music-fadein?) (logior! fade-hack 1))
-    (unless (-> obj music-fadeout?) (logior! fade-hack 2))
-    (pc-sound-set-fade-hack fade-hack)
-    )
-
-  (if (pc-cheats? (-> obj cheats) mirror)
-      (sound-set-mirror-mode (sound-mirror-mode mirrored))
-      (sound-set-mirror-mode (sound-mirror-mode normal)))
-
-  (none))
-
-;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
-(define *pc-cheat-temp* (new 'global 'inline-array 'uint8 PC_CHEAT_MAX))
-
-(defmacro pc-cheat-toggle-and-tune (cheats-var cheat)
-  "quickly toggle a cheat code and play an appropriate sound"
-  `(begin
-    (cpad-clear! 0 r1)
-    (logxor! ,cheats-var (pc-cheats ,cheat))
-    (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
-    )
-  )
-
-(defun bcd->dec ((bcd uint))
-  "Convert a number encoded in BCD to its decimal equivalent"
-    (+ (* (shr (logand bcd #xf0) 4) 10) (logand bcd #x0f))
-  )
-
-(defmethod update pc-settings ((obj pc-settings))
-  "Update settings to/from PC kernel. Call this at the start of every frame.
-   This will update things like the aspect-ratio, which will be used for graphics code later."
-
-  (update-from-os obj)
-  (update-to-os obj)
-
-  (set! (-> obj movie?) (movie?))
-
-  (let ((info (new 'stack 'discord-info)))
-    (set! (-> info fuel) (&-> *game-info* fuel))
-    (set! (-> info money-total) (&-> *game-info* money-total))
-    (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
-    (set! (-> info deaths) (&-> *game-info* total-deaths))
-    (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
-    (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
-    (set! (-> info cutscene?) (-> obj movie?))
-    (set! (-> info ogreboss?) (aif (process-by-ename "ogreboss-1") (case (-> it next-state name) (
-                                      ('ogreboss-die
-                                       'ogreboss-idle
-                                       'ogreboss-stage1
-                                       'ogreboss-stage2
-                                       'ogreboss-stage3-hit
-                                       'ogreboss-stage3-shuffle
-                                       'ogreboss-stage3-throw
-                                       'ogreboss-wait-for-player) #t))))
-    (set! (-> info plant-boss?) (aif (process-by-ename "plant-boss-3") (case (-> it next-state name) (
-                                      ('plant-boss-idle
-                                       'plant-boss-hit
-                                       'plant-boss-vulnerable
-                                       'plant-boss-spawn
-                                       'plant-boss-reset
-                                       'plant-boss-attack) #t))))
-    (set! (-> info racer?) (aif *target* (case (-> it next-state name) (
-                                      ('target-racing
-                                       'target-racing-bounce
-                                       'target-racing-death
-                                       'target-racing-falling
-                                       'target-racing-grab
-                                       'target-racing-hit
-                                       'target-racing-jump
-                                       'target-racing-smack
-                                       'target-racing-start) #t))))
-    (set! (-> info flutflut?) (aif *target* (case (-> it next-state name) (
-                                      ('target-flut-air-attack
-                                       'target-flut-air-attack-hit-ground
-                                       'target-flut-double-jump
-                                       'target-flut-falling
-                                       'target-flut-grab
-                                       'target-flut-hit
-                                       'target-flut-hit-ground
-                                       'target-flut-jump
-                                       'target-flut-running-attack
-                                       'target-flut-stance
-                                       'target-flut-start
-                                       'target-flut-walk) #t))))
-    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
-
-    (with-profiler "discord-update" (pc-discord-rpc-update info))
-    )
-
-  ;; update auto-splitter info
-  (when (-> *pc-settings* speedrunner-mode?)
-    (with-profiler "speedrun-update-jak1"
-      (speedrun-mode-update)))
-
-  (when (not (-> obj use-vis?))
-    (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
-    (set! (-> *video-parms* relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
-    (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
-    )
-  (when (not (-> obj use-vis?))
-    (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
-
-    (when *progress-process*
-      ;; adjust sizes for progress.
-      ;; video.gc sets the sizes in the normal game.
-      ;; this is a complete hack and i'm losing it
-      (let ((pr (-> *progress-process*))
-            ;(wide-adjust (* 4.0 (- (/ (-> obj aspect-ratio-scale) ASPECT_16X9_SCALE) (1/ ASPECT_16X9_SCALE))))
-            )
-          (set! (-> pr sides-x-scale) 1.0)
-          (set! (-> pr sides-y-scale) 13.0)
-          ;(set! (-> pr left-x-offset) (+ 59 (the int (* (-> obj aspect-ratio-scale) -59))))
-          ;(set! (-> pr right-x-offset) 26)
-          ;(set! (-> pr button-scale) (+ 1.0 (* wide-adjust 0.1)))
-          )
-      )
-    )
-  (cond
-    ((-> obj force-actors?)
-      ;; kinda overkill.
-      (set! (-> *ACTOR-bank* birth-dist) (meters 10000))
-      (set! (-> *ACTOR-bank* pause-dist) (meters 10000))
-      (set! (-> *ACTOR-bank* birth-max) 1000)
-      )
-    ((> (-> *ACTOR-bank* birth-dist) (meters 220)) ;; the original caps at 220m, exceeding that means it was using our hacks
-      (set! (-> *ACTOR-bank* birth-dist) (meters 220))
-      (set! (-> *ACTOR-bank* pause-dist) (meters 220))
-      ))
-
-  ;; cheats.
-  (update-cheats obj)
-  ;; music.
-  (update-music-log obj)
-
-  (none))
-
-(defmethod update-cheats pc-settings ((obj pc-settings))
+(defmethod update-cheats pc-settings-jak1 ((obj pc-settings-jak1))
   "run cheats."
 
   ;; first check for cheat inputs.
