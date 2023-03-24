@@ -75,7 +75,7 @@ GameVersion g_game_version = GameVersion::Jak1;
 namespace {
 
 int g_argc = 0;
-char** g_argv = nullptr;
+const char** g_argv = nullptr;
 
 /*!
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
@@ -310,25 +310,14 @@ void dmac_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
-RuntimeExitStatus exec_runtime(int argc, char** argv) {
+RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  // parse opengoal arguments
-  g_game_version = GameVersion::Jak1;
-  bool enable_display = true;
-  for (int i = 1; i < argc; i++) {
-    if (std::string("-nodisplay") == argv[i]) {  // disable video display
-      enable_display = false;
-    } else if (std::string("-vm") == argv[i]) {  // enable debug ps2 VM
-      VM::use = true;
-    } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
-      VM::use = false;
-    } else if (std::string("-jak2") == argv[i]) {
-      g_game_version = GameVersion::Jak2;
-    }
-  }
+  bool enable_display = !game_options.disable_display;
+  VM::use = !game_options.disable_debug_vm;
+  g_game_version = game_options.game_version;
 
   // set up discord stuff
   gStartTime = time(nullptr);
@@ -365,7 +354,13 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
   if (enable_display) {
-    Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
+    try {
+      Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
+    } catch (std::exception& e) {
+      fmt::print("Exception thrown from graphics loop: {}\n", e.what());
+      fmt::print("Everything will crash now. good luck\n");
+      throw;
+    }
   }
 
   // hack to make the IOP die quicker if it's loading/unloading music

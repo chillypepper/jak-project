@@ -129,13 +129,13 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_SRC_DST) {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
-      ASSERT(fix == 0);
+      // fix is ignored. it's usually 0, except for lightning, which sets it to 0x80.
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::ZERO_SRC_SRC_DST) {
@@ -159,7 +159,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5f;
+      color_mult = 1.0f;
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_FIX_DST) {
       glBlendEquation(GL_FUNC_ADD);
       glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
@@ -268,6 +268,9 @@ void Generic2::do_draws_for_alpha(SharedRenderState* render_state,
       setup_opengl_for_draw_mode(first.mode, first.fix, render_state);
       setup_opengl_tex(0, first.tbp, first.mode.get_filt_enable(), first.mode.get_clamp_s_enable(),
                        first.mode.get_clamp_t_enable(), render_state);
+      // if (alpha == DrawMode::AlphaBlend::SRC_0_DST_DST) {
+      //  glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
+      // }
       glDrawElements(GL_TRIANGLE_STRIP, bucket.idx_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * bucket.idx_idx));
       prof.add_draw_call();

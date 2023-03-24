@@ -6,6 +6,11 @@
 ;; dgos: ENGINE, GAME
 ;; todo docs, methods
 
+;; max amount of levels in level heap
+(defconstant LEVEL_MAX 6)
+;; total amount of levels, including ones outside level heap (default-level)
+(defconstant LEVEL_TOTAL 7)
+
 (declare-type bsp-header basic)
 (declare-type drawable basic)
 (declare-type entity-links structure)
@@ -21,8 +26,8 @@
 (define-extern *level-load-list* pair)
 
 (defmacro start-debug (str &rest args)
-  `(format 0 ,(string-append "[START] " str) ,@args)
-  )
+  ;`(format 0 ,(string-append "[START] " str) ,@args)
+  0)
 
 
 (defenum load-buffer-mode
@@ -116,6 +121,33 @@
 (declare-type level-load-info basic)
 (define-extern lookup-level-info (function symbol level-load-info))
 
+;; +++bigmap-id
+(defenum bigmap-id
+  :type uint32
+  (bigmap-id-0 0)
+  (bigmap-id-1 1)
+  (bigmap-id-2 2)
+  (bigmap-id-3 3)
+  (bigmap-id-4 4)
+  (bigmap-id-5 5)
+  (bigmap-id-6 6)
+  (bigmap-id-7 7)
+  (bigmap-id-8 8)
+  (bigmap-id-9 9)
+  (bigmap-id-10 10)
+  (bigmap-id-11 11)
+  (bigmap-id-12 12)
+  (bigmap-id-13 13)
+  (sewer-default 14)
+  (sewer-with-board-area 15)
+  (bigmap-id-16 16)
+  (bigmap-id-17 17)
+  (bigmap-id-18 18)
+  (bigmap-id-19 19)
+  (bigmap-id-20 20))
+;; ---bigmap-id
+
+
 ;; DECOMP BEGINS
 
 (deftype level-vis-info (basic)
@@ -200,7 +232,7 @@
    (draw-priority           float                    :offset-assert 224)
    (level-flags             uint32                   :offset-assert 228)
    (fog-height              float                    :offset-assert 232)
-   (bigmap-id               uint32                   :offset-assert 236)
+   (bigmap-id               bigmap-id                :offset-assert 236)
    (ocean-near-translucent? symbol                   :offset-assert 240)
    (ocean-far?              symbol                   :offset-assert 244)
    (mood-range              mood-range       :inline :offset-assert 256)
@@ -353,11 +385,11 @@
    (load-time             float                           :offset-assert 156)
    (load-login-time       float                           :offset-assert 160)
    (draw-level-count      int32                           :offset-assert 164)
-   (draw-level            level                 7         :offset-assert 168)
-   (draw-index-map        uint8                 7         :offset-assert 196)
+   (draw-level            level                 LEVEL_TOTAL :offset-assert 168)
+   (draw-index-map        uint8                 LEVEL_TOTAL :offset-assert 196)
    (load-order            uint64                          :offset-assert 208)
-   (pad                   uint8                 30        :offset-assert 216)
-   (level                 level                 7 :inline :offset-assert 256)
+   (pad                   uint8                 30        :offset 216)
+   (level                 level                 LEVEL_TOTAL :inline :offset-assert 256)
    (level0                level                 :inline   :offset        256)
    (level1                level                 :inline   :offset        5488)
    (level2                level                 :inline   :offset        10720)
@@ -365,9 +397,7 @@
    (level4                level                 :inline   :offset        21184)
    (level5                level                 :inline   :offset        26416)
    (default-level         level                 :inline   :offset        31648)
-   (unknown-inline-vec-01 (inline-array vector)           :offset        32064)
-   (unknown-inline-vec-02 (inline-array vector)           :offset        33712)
-   (pad2                  uint8                 4         :offset-assert 36880)
+   (pad2                  uint8                 4)
    )
   :method-count-assert 31
   :size-assert         #x9014
@@ -382,7 +412,7 @@
     (debug-draw-actors (_type_ symbol) none 15)
     (assign-draw-indices (_type_) none 16)
     (actors-update (_type_) none 17)
-    (update-nav-meshes (_type_) none 18)
+    (update-nav-meshes-method (_type_) none 18)
     (level-update (_type_) none 19)
     (level-get-target-inside (_type_) level 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
@@ -401,7 +431,7 @@
 
 (when (zero? *level*)
   (set! *level* (new 'static 'level-group
-                  :length 6
+                  :length LEVEL_MAX
                   :log-in-level-bsp #f
                   :loading-level #f
                   :entity-link #f
@@ -479,7 +509,7 @@
                     )
                   :default-level (new 'static 'level
                     :name 'default
-                    :index 6
+                    :index LEVEL_MAX
                     :status 'reserved
                     :borrow-level (new 'static 'array level 2 #f #f)
                     :borrow-from-level #f

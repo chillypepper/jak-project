@@ -13,8 +13,13 @@ struct TfragPcPortData {
   math::Vector4f hvdf_off;
   math::Vector4f fog;
   math::Vector4f cam_trans;
+
+  math::Vector4f camera_rot[4];
+  math::Vector4f camera_perspective[4];
+
   char level_name[16];
 };
+static_assert(sizeof(TfragPcPortData) == 16 * 24);
 
 // inputs to background renderers.
 struct TfragRenderSettings {
@@ -34,6 +39,7 @@ struct DoubleDraw {
   DoubleDrawKind kind = DoubleDrawKind::NONE;
   float aref_first = 0.;
   float aref_second = 0.;
+  float color_mult = 1.;
 };
 
 DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, ShaderId shader);
@@ -99,3 +105,18 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
                                 u32* idx_out,
                                 const std::vector<tfrag3::ShrubDraw>& draws,
                                 const u32* idx_in);
+
+u32 make_multidraws_from_vis_and_proto_string(std::pair<int, int>* draw_ptrs_out,
+                                              GLsizei* counts_out,
+                                              void** index_offsets_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data);
+
+u32 make_index_list_from_vis_and_proto_string(std::pair<int, int>* group_out,
+                                              u32* idx_out,
+                                              const std::vector<tfrag3::StripDraw>& draws,
+                                              const std::vector<u8>& vis_data,
+                                              const std::vector<u8>& proto_vis_data,
+                                              const u32* idx_in,
+                                              u32* num_tris_out);

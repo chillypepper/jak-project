@@ -84,7 +84,7 @@
 (deftype joint-exploder-static-params (basic)
   ((joints       (array joint-exploder-static-joint-params)  :offset-assert   4)
    (collide-spec uint32                                      :offset-assert   8)
-   (art-level    basic                                       :offset-assert  12)
+   (art-level    symbol                                      :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -221,6 +221,9 @@
     (remove-joint-from-list (_type_ joint-exploder-list int) int 27)
     (adjust-bbox-for-limits-along-axis (_type_ joint-exploder-list int) joint-exploder-list 28)
     (adjust-bbox-for-limits (_type_ joint-exploder-list) none 29)
+    )
+  (:states
+    joint-exploder-shatter
     )
   )
 

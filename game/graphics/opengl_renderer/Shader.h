@@ -15,6 +15,7 @@ class Shader {
   u64 id() const { return m_program; }
 
  private:
+  std::string m_name;
   u64 m_frag_shader = 0;
   u64 m_vert_shader = 0;
   u64 m_program = 0;
@@ -47,6 +48,14 @@ enum class ShaderId {
   SPRITE_DISTORT_INSTANCED = 21,
   POST_PROCESSING = 22,
   DEPTH_CUE = 23,
+  EMERC = 24,
+  GLOW_PROBE = 25,
+  GLOW_PROBE_READ = 26,
+  GLOW_PROBE_READ_DEBUG = 27,
+  GLOW_PROBE_DOWNSAMPLE = 28,
+  GLOW_DRAW = 29,
+  ETIE_BASE = 30,
+  ETIE = 31,
   MAX_SHADERS
 };
 

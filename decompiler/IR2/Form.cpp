@@ -1877,6 +1877,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-length";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
       return "vector+float*!";
+    case FixedOperatorKind::FOCUS_TEST:
+      return "focus-test?";
     default:
       ASSERT(false);
       return "";
@@ -2483,7 +2485,7 @@ void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* fi
   if (m_label_info) {
     m_description =
         decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
-                                     env.file->words_by_seg, *env.dts, file, env.version);
+                                     env.file->words_by_seg, env.dts->ts, file, env.version);
   } else {
     m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
                                                   env.dts->ts, file, env.version);
@@ -3260,7 +3262,12 @@ goos::Object DefpartgroupElement::to_form_internal(const Env& env) const {
     }
 
     if (offset) {
-      result += fmt::format(" :offset {}", offset);
+      // jak2 has switched this field to a signed 16 bit number
+      if (env.version == GameVersion::Jak2) {
+        result += fmt::format(" :offset {}", (s16)offset);
+      } else {
+        result += fmt::format(" :offset {}", offset);
+      }
     }
 
     if (hour_mask) {

@@ -729,7 +729,6 @@ Ptr<Type> alloc_and_init_type(Ptr<Symbol4<Ptr<Type>>> sym,
 
   if (!force_global_type &&
       u32_in_fixed_sym(FIX_SYM_LOADING_LEVEL) != u32_in_fixed_sym(FIX_SYM_GLOBAL_HEAP)) {
-    printf("using level types!\n");  // added
     u32 type_list_ptr = LevelTypeList->value();
     if (type_list_ptr == 0) {
       // we don't have a type-list... just alloc on global
@@ -954,7 +953,6 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
       MsgWarn("dkernel: loading-level init of type %s, but was interned global (this is okay)\n",
               sym_to_string(new_type_obj->symbol)->data());
     } else {
-      printf("case 2 for new_type level types\n");
       new_type_obj->memusage_method.offset = original_type_list_value;
     }
   }
@@ -981,7 +979,7 @@ u64 type_typep(Ptr<Type> t1, Ptr<Type> t2) {
 
 u64 method_set(u32 type_, u32 method_id, u32 method) {
   Ptr<Type> type(type_);
-  if (method_id > 127)
+  if (method_id > 255)
     printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
 
   auto existing_method = type->get_method(method_id).offset;

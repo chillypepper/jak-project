@@ -5,12 +5,15 @@
 ;; name in dgo: bsp-h
 ;; dgos: ENGINE, GAME
 
-;; the bsp-node class seems broken - it has int16's that get used a pointers.
+#|@file
+the bsp-node class seems broken - it has int16's that get used a pointers.
+|#
 
 (declare-type entity-camera entity)
 (declare-type entity-race-mesh entity)
 (declare-type entity-nav-mesh entity)
 (declare-type actor-group basic)
+(declare-type city-level-info structure)
 
 (defenum texture-page-flag
   :type uint16
@@ -83,6 +86,8 @@
    (collide-hash             collide-hash                :offset-assert 196)
    ;; 200 is some array
    (wind-array-length int32 :offset 204)
+
+   (city-level-info          city-level-info                    :offset 208)
 
    (vis-spheres              vector-array                       :offset 216)
 

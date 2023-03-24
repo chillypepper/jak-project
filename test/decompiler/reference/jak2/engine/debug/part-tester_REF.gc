@@ -3,7 +3,7 @@
 
 ;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
 ;; failed to figure out what this is:
 (defpartgroup group-part-tester
   :id 127
@@ -23,6 +23,9 @@
   :method-count-assert 14
   :size-assert         #x8c
   :flag-assert         #xe0010008c
+  (:states
+    part-tester-idle
+    )
   )
 
 ;; definition for method 3 of type part-tester
@@ -132,5 +135,3 @@
     )
   (none)
   )
-
-)

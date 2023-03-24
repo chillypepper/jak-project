@@ -16,6 +16,7 @@
 struct RenderOptions {
   bool draw_render_debug_window = false;
   bool draw_profiler_window = false;
+  bool draw_loader_window = false;
   bool draw_small_profiler_window = false;
   bool draw_subtitle_editor_window = false;
   bool draw_filters_window = false;
@@ -160,5 +161,6 @@ class OpenGLRenderer {
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
 
+  std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
   GameVersion m_version;
 };

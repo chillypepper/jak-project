@@ -29,6 +29,7 @@
 #include "decompiler/data/StrFileReader.h"
 #include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
+#include "decompiler/data/game_subs.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/tpage.h"
 
@@ -204,18 +205,20 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
   }
 
-  lg::info("-Loading {} streaming object files...", str_files.size());
-  for (auto& obj : str_files) {
-    StrFileReader reader(obj);
-    // name from the file name
-    std::string base_name = obj_filename_to_name(obj.string());
-    // name from inside the file (this does a lot of sanity checking)
-    auto obj_name = reader.get_full_name(base_name + ".STR");
-    for (int i = 0; i < reader.chunk_count(); i++) {
-      // append the chunk ID to the full name
-      std::string name = obj_name + fmt::format("+{}", i);
-      auto& data = reader.get_chunk(i);
-      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
+  if (config.read_spools) {
+    lg::info("-Loading {} streaming object files...", str_files.size());
+    for (auto& obj : str_files) {
+      StrFileReader reader(obj, version());
+      // name from the file name
+      std::string base_name = obj_filename_to_name(obj.string());
+      // name from inside the file (this does a lot of sanity checking)
+      auto obj_name = reader.get_full_name(base_name + ".STR");
+      for (int i = 0; i < reader.chunk_count(); i++) {
+        // append the chunk ID to the full name
+        std::string name = obj_name + fmt::format("+{}", i);
+        auto& data = reader.get_chunk(i);
+        add_obj_from_dgo(name, name, data.data(), data.size(), "ALLSPOOL", config, obj_name);
+      }
     }
   }
 
@@ -313,6 +316,55 @@ void ObjectFileDB::get_objs_from_dgo(const fs::path& filename, const Config& con
 }
 
 /*!
+ * Are two object files the same?
+ * Unfortunately they seemed to have a memory bug in their art-group generator, so there's some
+ * uninitialized padding bytes.
+ */
+bool are_objects_the_same(const std::string& obj_name,
+                          size_t size_a,
+                          const u8* a,
+                          size_t size_b,
+                          const u8* b) {
+  if (size_a != size_b) {
+    return false;
+  }
+
+  // if they are byte-for-byte the same, it's a match
+  if (!memcmp(a, b, size_a)) {
+    return true;
+  }
+
+  // if it's an art group...
+  if (obj_name.size() > 3 && !obj_name.compare(obj_name.length() - 3, 3, "-ag")) {
+    // count up the number of differing bytes, and the location of the first one.
+    size_t first_diff = 0;
+    size_t last_diff = 0;
+    int num_diffs = 0;
+    bool found_first_diff = false;
+    for (size_t i = 0; i < size_a; i++) {
+      if (a[i] != b[i]) {
+        num_diffs++;
+        last_diff = i;
+        if (!found_first_diff) {
+          first_diff = i;
+          found_first_diff = true;
+        }
+      }
+    }
+
+    // find the gap between "code" (really data here) and link table. This has up to 15 bytes of
+    // uninitialized memory.
+    const auto* header = (const LinkHeaderV4*)a;
+    int link_data_offset = header->code_size + sizeof(LinkHeaderV4);
+    int start_off_diff_from_code_end = link_data_offset - (int)first_diff;
+    if (num_diffs < 16 && start_off_diff_from_code_end < 16 && (int)last_diff < link_data_offset) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/*!
  * Add an object file to the ObjectFileDB
  */
 void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
@@ -320,7 +372,8 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const uint8_t* obj_data,
                                     uint32_t obj_size,
                                     const std::string& dgo_name,
-                                    const Config& config) {
+                                    const Config& config,
+                                    const std::string& cut_name) {
   if (config.banned_objects.find(obj_name) != config.banned_objects.end()) {
     return;
   }
@@ -337,10 +390,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   bool duplicated = false;
   // first, check to see if we already got it...
   for (auto& e : obj_files_by_name[obj_name]) {
-    if (e.data.size() == obj_size && e.record.hash == hash) {
-      // just to make sure we don't have a hash collision.
-      ASSERT(!memcmp(obj_data, e.data.data(), obj_size));
-
+    if (are_objects_the_same(obj_name, e.data.size(), e.data.data(), obj_size, obj_data)) {
       // already got it!
       e.reference_count++;
       auto& rec = e.record;
@@ -369,6 +419,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
     // if this is the first time we've seen this object file name, add it in the order.
     obj_file_order.push_back(obj_name);
   }
+  data.base_name_from_chunk = cut_name;
   data.record.version = obj_files_by_name[obj_name].size();
   data.name_in_dgo = name_in_dgo;
   data.obj_version = version;
@@ -443,9 +494,10 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
   for (auto& obj_file : obj_file_order) {
     for (auto& x : obj_files_by_name.at(obj_file)) {
       std::string dgos = "[";
-      for (auto& y : x.dgo_names) {
-        ASSERT(y.length() >= 5);
-        std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
+      for (auto& name : x.dgo_names) {
+        ASSERT(name.length() >= 5);
+        std::string new_str =
+            (name == "NO-XGO" || name == "ALLSPOOL") ? name : name.substr(0, name.length() - 4);
         dgos += "\"" + new_str + "\", ";
       }
       dgos.pop_back();
@@ -677,6 +729,58 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
     return {};
   }
   return result;
+}
+
+std::string ObjectFileDB::process_all_spool_subtitles(const Config& cfg,
+                                                      const fs::path& image_out) {
+  try {
+    lg::info("- Finding spool subtitles...");
+    Timer timer;
+    int obj_count = 0;
+    int string_count = 0;
+    int image_count = 0;
+    int subs_count = 0;
+    std::unordered_map<std::string, std::vector<SpoolSubtitleRange>> all_subs;
+
+    for_each_obj_in_dgo("ALLSPOOL", [&](ObjectFileData& data) {
+      int this_string_count = 0;
+      int this_image_count = 0;
+      obj_count++;
+      auto this_spool_subs = process_spool_subtitles(data, cfg.text_version);
+      if (!this_spool_subs.empty()) {
+        for (auto& s : this_spool_subs) {
+          subs_count++;
+          for (int i = 0; i < 8; ++i) {
+            if (s.message[i].kind == SpoolSubtitleMessage::Kind::IMAGE) {
+              this_image_count++;
+            } else if (s.message[i].kind == SpoolSubtitleMessage::Kind::STRING) {
+              this_string_count++;
+            }
+          }
+        }
+        auto& spool_subs = all_subs[data.base_name_from_chunk];
+        for (auto& x : this_spool_subs) {
+          bool skip = false;
+          for (auto& other : spool_subs) {
+            skip |= other == x;
+          }
+          if (!skip) {
+            all_subs[data.base_name_from_chunk].push_back(x);
+            image_count += this_image_count;
+            string_count += this_string_count;
+          }
+        }
+      }
+    });
+
+    lg::info("Processed {} subtitles in {} spool objects ({} strings, {} images) in {:.2f} ms",
+             subs_count, obj_count, string_count, image_count, timer.getMs());
+
+    return write_spool_subtitles(cfg.text_version, image_out, all_subs);
+  } catch (std::runtime_error& e) {
+    lg::warn("Error when extracting spool subtitles: {}", e.what());
+    return {};
+  }
 }
 
 std::string ObjectFileDB::process_game_text_files(const Config& cfg) {

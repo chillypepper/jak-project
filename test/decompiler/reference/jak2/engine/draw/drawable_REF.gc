@@ -150,7 +150,7 @@
   )
 
 ;; definition (debug) for function vis-cull-debug
-;; WARN: Failed load: (set! v1-2 (l.b (+ v1-1 #x38a0))) at op 2
+;; ERROR: Failed load: (set! v1-2 (l.b (+ v1-1 #x38a0))) at op 2
 ;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
 (defun-debug vis-cull-debug ((arg0 work-area) (arg1 int))
   (local-vars (v1-0 int) (a0-2 int))
@@ -217,10 +217,10 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod collect-regions drawable ((obj drawable) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
   "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
-       @param area-of-interest The area defined by a sphere that we care about overlaps
-       @param _count The amount of [[drawable]]s in the object to enumerate through
-       @param! region-list Stores the overlapping regions and a count for how many were found
-       @returns none"
+@param area-of-interest The area defined by a sphere that we care about overlaps
+@param _count The amount of [[drawable]]s in the object to enumerate through
+@param! region-list Stores the overlapping regions and a count for how many were found
+@returns none"
   0
   (none)
   )
@@ -913,21 +913,19 @@
                       )
                     (when (not (or (>= lev-idx-for-mood (the-as uint 6)) (zero? shadow-mask)))
                       (let ((packed-shadow-vals (-> dc shadow-values)))
-                        (set! light-idx 0)
-                        (while (< light-idx 4)
-                          (when (nonzero? (-> lg lights light-idx mask))
-                            (when (not (logtest? (-> lg lights light-idx mask) shadow-mask-not))
-                              (let ((light-pal-idx (-> lg lights light-idx palette-index)))
-                                (set! (-> lg lights light-idx extra x)
+                        (dotimes (light-idx2 4)
+                          (when (nonzero? (-> lg lights light-idx2 mask))
+                            (when (not (logtest? (-> lg lights light-idx2 mask) shadow-mask-not))
+                              (let ((light-pal-idx (-> lg lights light-idx2 palette-index)))
+                                (set! (-> lg lights light-idx2 extra x)
                                       (* 0.0625
                                          (the float (logand (ash packed-shadow-vals (* -4 light-pal-idx)) 15))
-                                         (-> lg lights light-idx extra x)
+                                         (-> lg lights light-idx2 extra x)
                                          )
                                       )
                                 )
                               )
                             )
-                          (+! light-idx 1)
                           )
                         )
                       )
@@ -973,7 +971,7 @@
                     (when (and (nonzero? (-> dc shadow-ctrl))
                                (-> dc shadow-ctrl)
                                (not (logtest? (-> dc shadow-ctrl settings flags) (shadow-flags disable-draw)))
-                               (zero? (logand (-> dc shadow-ctrl settings flags) (shadow-flags shdf07)))
+                               (not (logtest? (-> dc shadow-ctrl settings flags) (shadow-flags shdf07)))
                                )
                       (let ((target-shadow-dir (new 'stack-no-clear 'vector))
                             (current-shadow-dir (-> dc shadow-ctrl settings shadow-dir))
@@ -1589,7 +1587,7 @@
         )
       0
       )
-    (update-nav-meshes *level*)
+    (update-nav-meshes-method *level*)
     (when *debug-segment*
       (let ((gp-10 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
         (when (and *dproc* *debug-segment*)

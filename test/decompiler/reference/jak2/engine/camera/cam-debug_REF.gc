@@ -3,7 +3,7 @@
 
 ;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
 ;; failed to figure out what this is:
 (when (or (not *camera-old-cpu*) (zero? *camera-old-cpu*))
   (set! *camera-old-cpu* 0)
@@ -200,8 +200,7 @@
 
 ;; definition for function cam-line-dma
 ;; INFO: Used lq/sq
-;; WARN: Failed store: (s.w! (+ a0-2 8) 0) at op 78
-;; WARN: Failed store: (s.w! (+ a0-2 12) 0) at op 79
+;; ERROR: Failed store: (s.w! (+ a0-2 8) 0) at op 78
 (defun cam-line-dma ()
   (with-dma-buffer-add-bucket ((v1-5 (-> *display* frames (-> *display* on-screen) debug-buf))
                                (bucket-id debug-no-zbuf1)
@@ -1194,9 +1193,9 @@
           ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
            (vector+float*! s5-1 s4-1 (the-as vector (-> *camera-combiner* tracking)) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :x #xff :w #x80))
-           (vector+float*! s5-1 s4-1 (the-as vector (&-> *camera-combiner* stack 176)) 2048.0)
+           (vector+float*! s5-1 s4-1 (-> *camera-combiner* tracking inv-mat vector 1) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :y #xff :w #x80))
-           (vector+float*! s5-1 s4-1 (the-as vector (&-> *camera-combiner* stack 192)) 2048.0)
+           (vector+float*! s5-1 s4-1 (-> *camera-combiner* tracking inv-mat vector 2) 2048.0)
            (camera-line s4-1 s5-1 (new 'static 'vector4w :z #xff :w #x80))
            )
           (else
@@ -1816,5 +1815,3 @@
   (set! (-> *tfrag-work* max-fragment) (the-as uint 319))
   (none)
   )
-
-)

@@ -100,17 +100,9 @@
 ;; definition for method 28 of type hoverboard-training-manager
 (defmethod render-text hoverboard-training-manager ((obj hoverboard-training-manager) (arg0 game-text-id))
   (when (= (get-status *gui-control* (-> obj gui-id)) (gui-status active))
-    (let ((s5-1 (new
-                  'stack
-                  'font-context
-                  *font-default-matrix*
-                  32
-                  280
-                  0.0
-                  (font-color default-#cddbcd)
-                  (font-flags shadow kerning)
-                  )
-                )
+    (let ((s5-1
+            (new 'stack 'font-context *font-default-matrix* 32 280 0.0 (font-color default) (font-flags shadow kerning))
+            )
           )
       (set! (-> s5-1 flags) (font-flags shadow kerning large))
       (let ((v1-4 s5-1))
@@ -362,7 +354,7 @@
     (set! (-> self last-sound-id)
           (add-process *gui-control* self (gui-channel sig) (gui-action play) "kei001" -99.0 0)
           )
-    (while (or (not *target*) (zero? (logand (focus-status board) (-> *target* focus-status))))
+    (while (or (not *target*) (not (logtest? (focus-status board) (-> *target* focus-status))))
       (if (= (get-status *gui-control* (-> self last-sound-id)) (gui-status unknown))
           (send-event (handle->process (-> self voicebox)) 'speak-effect #f)
           )
@@ -1398,6 +1390,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! hoverboard-training-manager ((obj hoverboard-training-manager) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -1586,6 +1584,12 @@
 ;; definition for method 11 of type skate-training-ramp
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skate-training-ramp ((obj skate-training-ramp) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skate-training-ramp-method-28 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1726,6 +1730,12 @@
 ;; definition for method 11 of type skate-gate
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skate-gate ((obj skate-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skate-gate-method-29 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -2010,6 +2020,12 @@
 ;; definition for method 11 of type skatea-floating-ring
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! skatea-floating-ring ((obj skatea-floating-ring) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (skatea-floating-ring-method-28 obj)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton

@@ -16,11 +16,6 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/ranges.h"
 
-// TODO - this should probably go somewhere common when it's needed eventually
-std::unordered_map<std::string, std::string> game_name_to_config = {
-    {"jak1", "jak1_ntsc_black_label.jsonc"},
-    {"jak2", "jak2_ntsc_v1.jsonc"}};
-
 OfflineTestThreadManager g_offline_test_thread_manager;
 
 OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
@@ -28,10 +23,11 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
                                        const OfflineTestConfig& offline_config) {
   // TODO - pull out extractor logic to determine release into common and use here
   OfflineTestDecompiler dc;
-  dc.config = std::make_unique<decompiler::Config>(
-      decompiler::read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
-                                    game_name_to_config[offline_config.game_name])
-                                       .string()));
+  // TODO - this should probably go somewhere common when it's needed eventually
+  dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
+      file_util::get_jak_project_dir() / "decompiler" / "config" / offline_config.game_name /
+          fmt::format("{}_config.jsonc", offline_config.game_name),
+      "ntsc_v1"));
 
   // TODO - do I need to limit the `inputs.jsonc` as well, or is the decompiler smart enough
   // to lazily load the DGOs as needed based on the allowed objects?
@@ -41,11 +37,11 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   for (auto& file : work.work_collection.source_files) {
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
-  auto art_group_info = find_art_files(offline_config.game_name);
 
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
+  dc.config->process_art_groups = false;  // not needed, art groups are stored in a json file
 
   std::vector<fs::path> dgo_paths;
   for (auto& x : offline_config.dgos) {
@@ -55,7 +51,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
                                                      std::vector<fs::path>{},
                                                      std::vector<fs::path>{}, *dc.config);
-  dc.db->dts.art_group_info = art_group_info;
+  dc.db->dts.art_group_info = dc.config->art_group_info_dump;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -330,7 +326,7 @@ void OfflineTestThreadManager::print_current_test_status(const OfflineTestConfig
                fmt::format("[{}/{}]", status->curr_step, status->total_steps), status->curr_file);
     threads_shown++;
   }
-  if (threads_hidden != 0) {
+  if (threads_hidden > 0) {
     fmt::print(
         fmt::fg(fmt::color::gray), "\33[2K\r+{} other threads. [{} | {} | {}]\n", threads_hidden,
         fmt::styled(g_offline_test_thread_manager.num_threads_pending(),

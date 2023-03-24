@@ -1825,7 +1825,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
                        const std::vector<level_tools::TextureRemap>& map,
-                       tfrag3::TFragmentTreeKind tree_kind) {
+                       tfrag3::TFragmentTreeKind tree_kind,
+                       bool disable_atest_for_normal_tfrag) {
   // set up the draw mode based on the code in background.gc and tfrag-methods.gc
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
@@ -1838,13 +1839,24 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
   switch (tree_kind) {
     case tfrag3::TFragmentTreeKind::NORMAL:
     case tfrag3::TFragmentTreeKind::LOWRES:
-      mode.enable_at();                                  // :ate #x1
-      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
-      mode.set_aref(0x26);                               // :aref #x26
-      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-      mode.enable_zt();                            // :zte #x1
-      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
-      mode.disable_ab();
+      if (disable_atest_for_normal_tfrag) {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x0);                                // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      } else {
+        mode.enable_at();                                  // :ate #x1
+        mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+        mode.set_aref(0x26);                               // :aref #x26
+        mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+        mode.enable_zt();                            // :zte #x1
+        mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+        mode.disable_ab();
+      }
+
       break;
     case tfrag3::TFragmentTreeKind::TRANS:
     case tfrag3::TFragmentTreeKind::LOWRES_TRANS:
@@ -1994,7 +2006,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
                       std::vector<tfrag3::PreloadedVertex>& vertices,
                       std::vector<tfrag3::Texture>& texture_pool,
                       const TextureDB& tdb,
-                      const std::vector<std::pair<int, int>>& expected_missing_textures) {
+                      const std::vector<std::pair<int, int>>& expected_missing_textures,
+                      const std::string& level_name) {
   // we will set:
   // draws
   // color_indices_per_vertex
@@ -2028,9 +2041,9 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
               fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
                           "to include "
                           "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
-                          "tpage is {}. id is {} (0x{:x})",
+                          "tpage is {}. id is {} (0x{:x}) for level {}",
                           combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
-                          combo_tex_id & 0xffff));
+                          combo_tex_id & 0xffff, level_name));
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2052,6 +2065,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
 
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
+        ASSERT(strip.tfrag_id < UINT16_MAX);
         vgroup.vis_idx_in_pc_bvh = strip.tfrag_id;  // associate with the tfrag for culling
         vgroup.num_inds = strip.verts.size() + 1;   // one for the primitive restart!
         vgroup.num_tris = strip.verts.size() - 2;
@@ -2068,9 +2082,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.z = vert.pre_cam_trans_pos.z();
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
-          vtx.q_unused = vert.stq.z();
-          // if this is true, we can remove a divide in the shader
-          ASSERT(vtx.q_unused == 1.f);
+          // because this is true, we can remove a divide in the shader
+          ASSERT(vert.stq.z() == 1.f);
           vtx.color_index = vert.rgba / 4;
           // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
           ASSERT((vert.rgba & 3) == 0);
@@ -2095,7 +2108,9 @@ void emulate_tfrags(int geom,
                     std::vector<tfrag3::PreloadedVertex>& vertices,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
-                    bool dump_level) {
+                    bool dump_level,
+                    const std::string& level_name,
+                    bool disable_alpha_test_in_normal) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2111,16 +2126,18 @@ void emulate_tfrags(int geom,
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
 
-  process_draw_mode(all_draws, map, tree_out.kind);
+  process_draw_mode(all_draws, map, tree_out.kind, disable_alpha_test_in_normal);
   auto groups = make_draw_groups(all_draws);
 
-  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures);
+  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures,
+                   level_name);
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_draws);
-    file_util::write_text_file(
-        file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}),
-        debug_out);
+    auto file_path =
+        file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_out);
   }
 }
 
@@ -2155,7 +2172,9 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level) {
+                   bool dump_level,
+                   const std::string& level_name,
+                   bool disable_atest_in_normal) {
   // go through 3 lods(?)
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     tfrag3::TfragTree this_tree;
@@ -2218,7 +2237,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
 
     std::vector<tfrag3::PreloadedVertex> vertices;
     emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
-                   tex_db, expected_missing_textures, dump_level);
+                   tex_db, expected_missing_textures, dump_level, level_name,
+                   disable_atest_in_normal);
     pack_tfrag_vertices(&this_tree.packed_vertices, vertices);
     extract_time_of_day(tree, this_tree);
 
@@ -2226,7 +2246,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
       for (auto& str : draw.vis_groups) {
         auto it = tfrag_parents.find(str.vis_idx_in_pc_bvh);
         if (it == tfrag_parents.end()) {
-          str.vis_idx_in_pc_bvh = UINT32_MAX;
+          str.vis_idx_in_pc_bvh = UINT16_MAX;
         } else {
           str.vis_idx_in_pc_bvh = it->second;
         }

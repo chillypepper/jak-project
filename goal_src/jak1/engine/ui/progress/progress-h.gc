@@ -123,6 +123,10 @@
   (memcard-disable-auto-save)
   (memcard-auto-save-disabled)
   (monitor)
+  (checkpoint-select)
+  (speedrun-options)
+  (speedrun-il-options)
+  (speedrun-cat-ext-options)
 
   ;; the last one!
   (max)

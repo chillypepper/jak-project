@@ -38,7 +38,7 @@ namespace {
 
 constexpr bool run_dma_copy = false;
 
-constexpr PerGameVersion<int> fr3_level_count(3, 7);
+constexpr PerGameVersion<int> fr3_level_count(jak1::LEVEL_TOTAL, jak2::LEVEL_TOTAL);
 
 struct GraphicsData {
   // vsync
@@ -357,6 +357,9 @@ void GLDisplay::on_mouse_key(GLFWwindow* /*window*/, int button, int action, int
 }
 
 void GLDisplay::on_cursor_position(GLFWwindow* /*window*/, double xposition, double yposition) {
+  double xoffset = xposition - last_cursor_x_position;
+  double yoffset = yposition - last_cursor_y_position;
+
   last_cursor_x_position = xposition;
   last_cursor_y_position = yposition;
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
@@ -373,9 +376,6 @@ void GLDisplay::on_cursor_position(GLFWwindow* /*window*/, double xposition, dou
     is_cursor_position_valid = true;
     return;
   }
-
-  double xoffset = xposition - last_cursor_x_position;
-  double yoffset = yposition - last_cursor_y_position;
 
   Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
   Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
@@ -459,16 +459,14 @@ void render_game_frame(int game_width,
     options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
+    options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
 
-    want_hotkey_screenshot =
-        want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled;
-    if (want_hotkey_screenshot) {
-      want_hotkey_screenshot = false;
+    if (want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled) {
       options.save_screenshot = true;
       std::string screenshot_file_name = make_hotkey_screenshot_file_name();
       options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
@@ -486,8 +484,10 @@ void render_game_frame(int game_width,
       }
       options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
+    want_hotkey_screenshot = false;
 
-    options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
+    options.draw_small_profiler_window =
+        g_gfx_data->debug_gui.master_enable && g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
 
     GLint msaa_max;
@@ -831,6 +831,7 @@ void GLDisplay::render() {
 #endif
 
   // render game!
+  g_gfx_data->debug_gui.master_enable = is_imgui_visible();
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
     int game_res_w = Gfx::g_global_settings.game_res_w;

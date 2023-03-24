@@ -145,7 +145,7 @@
   :code (behavior ()
     (change-parent self *entity-pool*)
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 3))
+    (ja :group! mech-mech-idle-ja)
     (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
     (set! (-> self root-override penetrated-by) (penetrate))
     0.0
@@ -165,10 +165,10 @@
           )
         (when (and (and *target*
                         (and (>= f30-0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                             (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                             (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                              )
                         )
-                   (not (logtest? (focus-status in-head pole board mech dark) (-> *target* focus-status)))
+                   (not (focus-test? *target* in-head pole board mech dark))
                    (can-display-query? self (the-as string #f) -99.0)
                    (-> *setting-control* user-current pilot)
                    )
@@ -179,7 +179,7 @@
                         32
                         320
                         0.0
-                        (font-color default-#cddbcd)
+                        (font-color default)
                         (font-flags shadow kerning)
                         )
                       )
@@ -228,7 +228,7 @@
     (case event-type
       (('draw)
        (ja-channel-set! 1)
-       (ja :group! (-> self draw art-group data 3))
+       (ja :group! mech-mech-idle-ja)
        (set! (-> self root-override root-prim prim-core action) (collide-action solid can-ride no-standon))
        (set! (-> self root-override penetrated-by) (penetrate))
        (transform-post)
@@ -269,7 +269,7 @@
     (while (zero? (ja-group-size))
       (if (or (not *target*)
               (or (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                  (logtest? (focus-status teleporting) (-> *target* focus-status))
+                  (focus-test? *target* teleporting)
                   )
               )
           (go arg0)
@@ -277,7 +277,7 @@
       (mech-method-24 self)
       (suspend)
       )
-    (while (and *target* (logtest? (focus-status mech) (-> *target* focus-status)))
+    (while (and *target* (focus-test? *target* mech))
       (mech-method-24 self)
       (suspend)
       )
@@ -368,7 +368,7 @@
   (set! (-> self shadow-backup) (-> self draw shadow))
   (set! (-> self draw shadow-ctrl) *mech-shadow-control*)
   (let ((v1-27 (-> self node-list data)))
-    (set! (-> v1-27 0 param0) (the-as (function cspace matrix none) cspace<-transformq+trans!))
+    (set! (-> v1-27 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
     (set! (-> v1-27 0 param1) (the-as basic (-> self root-override trans)))
     (set! (-> v1-27 0 param2) (the-as basic (-> self extra-trans)))
     )
@@ -399,6 +399,12 @@
   )
 
 (defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (mech-init arg0 (the-as matrix3 #f) (the-as handle #f) 100.0)
   (none)
   )
@@ -416,7 +422,10 @@
   )
 
 
-(defskelgroup skel-mech-target mech 42 44 ((43 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+(defskelgroup skel-mech-target mech mech-target-lod0-jg mech-target-idle-ja
+              ((mech-target-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate idle (mech-target)
   :virtual #t
@@ -430,10 +439,10 @@
     )
   :trans (behavior ()
     (if (and (and *target* (and (>= 98304.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                                (zero? (logand (focus-status teleporting) (-> *target* focus-status)))
+                                (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                                 )
                   )
-             (logtest? (focus-status mech) (-> *target* focus-status))
+             (focus-test? *target* mech)
              )
         (go-virtual active)
         )
@@ -462,10 +471,10 @@
     )
   :trans (behavior ()
     (if (and (or (or (not *target*) (or (< 106496.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                                        (logtest? (focus-status teleporting) (-> *target* focus-status))
+                                        (focus-test? *target* teleporting)
                                         )
                      )
-                 (zero? (logand (focus-status mech) (-> *target* focus-status)))
+                 (not (logtest? (focus-status mech) (-> *target* focus-status)))
                  )
              (>= (- (-> self clock frame-counter) (-> self state-time)) (seconds 10))
              )
@@ -515,6 +524,6 @@
   )
 
 ;; WARN: Return type mismatch (pointer process) vs (pointer mech-target).
-(defun mech-target-spawn ((arg0 vector) (arg1 target) (arg2 quaternion) (arg3 entity-actor))
+(defun mech-target-spawn ((arg0 vector) (arg1 process) (arg2 quaternion) (arg3 entity-actor))
   (process-spawn mech-target :init mech-target-init arg0 arg2 arg3 :to arg1)
   )

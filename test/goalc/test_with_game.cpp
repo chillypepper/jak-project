@@ -604,6 +604,8 @@ TEST_F(WithGameTests, StaticInlineArray) {
 TEST_F(WithGameTests, StaticArrayField) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-field.gc",
                                           {"\"ghjkl\"\n"
+                                           "\"hello\"\n"
+                                           "\"world\"\n"
                                            "0\n"});
 }
 
@@ -766,9 +768,19 @@ TEST_F(WithGameTests, StaticLambda) {
                                           {"Add: 30 sub: -10\n0\n"});
 }
 
-TEST_F(WithGameTests, StaticLambdaArrayDraft) {
+TEST_F(WithGameTests, StaticLambdaArray) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-lambdas.gc",
                                           {"2\n1\n0\n"});
+}
+
+TEST_F(WithGameTests, StaticTypeArray) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-of-types.gc",
+                                          {"matched!\n0\n"});
+}
+
+TEST_F(WithGameTests, StaticArraySubtypeDraft) {
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-subtype.gc",
+                                          {"length - 2\ntest\n1\n0\n"});
 }
 
 TEST_F(WithGameTests, MethodReplace) {

@@ -83,8 +83,34 @@ goos::Object final_output_lambda(const Function& func) {
   }
 }
 
-goos::Object final_output_defstate_anonymous_behavior(const Function& func) {
+goos::Object final_output_defstate_anonymous_behavior(const Function& func,
+                                                      const DecompilerTypeSystem& dts) {
   std::vector<goos::Object> inline_body;
+
+  // docstring if available - lookup the appropriate info
+  const auto& type_name = func.guessed_name.type_name;
+  const auto& state_name = func.guessed_name.state_name;
+  const auto& handler_kind = func.guessed_name.handler_kind;
+  const auto handler_name = handler_kind_to_name(handler_kind);
+  if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    if (dts.virtual_state_metadata.count(type_name) != 0 &&
+        dts.virtual_state_metadata.at(type_name).count(state_name) != 0 &&
+        dts.virtual_state_metadata.at(type_name).at(state_name).count(handler_name) != 0) {
+      inline_body.insert(inline_body.begin(),
+                         pretty_print::new_string(dts.virtual_state_metadata.at(type_name)
+                                                      .at(state_name)
+                                                      .at(handler_name)
+                                                      .docstring.value()));
+    }
+  } else if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE) {
+    if (dts.state_metadata.count(state_name) != 0 &&
+        dts.state_metadata.at(state_name).count(handler_name) != 0) {
+      inline_body.insert(inline_body.begin(),
+                         pretty_print::new_string(
+                             dts.state_metadata.at(state_name).at(handler_name).docstring.value()));
+    }
+  }
+
   func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
   auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
 
@@ -308,7 +334,6 @@ std::string write_from_top_level_form(Form* top_form,
   }
 
   // look for the whole thing being in a (when *debug-segment* ....)
-  bool in_debug_only_file = false;
   if (forms.size() == 1) {
     auto as_cne = dynamic_cast<CondNoElseElement*>(forms.at(0));
     if (as_cne && as_cne->entries.size() == 1) {
@@ -317,9 +342,7 @@ std::string write_from_top_level_form(Form* top_form,
       if (entry.condition->to_string(env) == "*debug-segment*") {
         forms = entry.body->elts();
         result += ";; this file is debug only\n";
-        result += "(declare-file (debug))\n";
-        result += "(when *debug-segment*\n";
-        in_debug_only_file = true;
+        result += "(declare-file (debug))\n\n";
       }
     }
   }
@@ -531,10 +554,6 @@ std::string write_from_top_level_form(Form* top_form,
       result += pretty_print::to_string(x->to_form(env));
       result += "\n\n";
     }
-  }
-
-  if (in_debug_only_file) {
-    result += ")\n";
   }
 
   if (in_rlet) {

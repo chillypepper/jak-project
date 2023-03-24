@@ -7,6 +7,22 @@
 
 (declare-type fuel-cell basic) ;; TODO!!
 
+(#when PC_PORT
+
+(define *display-bones* #f)
+(define *display-joint-names* #f)
+
+(defun draw-joint-spheres ((arg0 process-drawable))
+  (dotimes (s5-0 (-> arg0 node-list length))
+    (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
+      (add-debug-sphere #t (bucket-id debug2) a2-0 (meters 0.2) (new 'static 'rgba :g #xff :a #x40))
+      (#when PC_PORT
+          (add-debug-text-sphere (!= (-> arg0 node-list data s5-0 joint) #f) (bucket-id debug2) a2-0 (meters 0.1) (the string (-> arg0 node-list data s5-0 joint name)) (static-rgba 0 #xff 0 #x40)))
+      )
+    )
+  #f
+  )
+
 (defun-debug draw-bone-lines ((obj process-drawable))
   "Added in PC port to debug bones"
   (dotimes (i (-> obj node-list length))
@@ -19,7 +35,7 @@
         )
       )
     )
-  )
+  ))
 
 ;; DECOMP BEGINS
 
@@ -308,7 +324,6 @@
   obj
   )
 
-;; WARN: Return type mismatch cspace-array vs none.
 (defmethod setup-cspace-and-add draw-control ((obj draw-control) (arg0 art-joint-geo) (arg1 symbol))
   (let ((s5-0 ((method-of-type cspace-array new) arg1 cspace-array (+ (-> arg0 length) 1))))
     (let ((v0-1 ((method-of-type skeleton new) arg1 skeleton (+ (-> arg0 length) 1))))
@@ -323,7 +338,7 @@
           (set! (-> v1-9 bone) (the-as bone (-> s3-1 bones)))
           )
         (let ((v1-10 (-> s5-0 data)))
-          (set! (-> v1-10 0 param0) (the-as (function cspace matrix none) cspace<-transformq!))
+          (set! (-> v1-10 0 param0) (the-as (function cspace transformq none) cspace<-transformq!))
           (set! (-> v1-10 0 param1) (the-as basic (-> (the-as process-drawable (-> obj process)) root trans)))
           )
         (let ((v1-12 (reset-and-assign-geo! (-> s5-0 data 1) (the-as drawable #f))))
@@ -335,7 +350,7 @@
           (set! (-> v1-14 joint) (-> arg0 data 1))
           (set! (-> v1-14 bone) (-> s3-1 bones 2))
           (set! (-> v1-14 parent) (the-as cspace (-> s5-0 data)))
-          (set! (-> v1-14 param0) (the-as (function cspace matrix none) cspace<-parented-matrix-joint!))
+          (set! (-> v1-14 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint!))
           (set! (-> v1-14 param1) (-> obj process))
           )
         (let ((s2-0 3))
@@ -409,7 +424,7 @@
               (let* ((v1-20 (-> arg0 data s1-1))
                      (t9-3 (the-as function (-> v1-20 param0)))
                      )
-                (if (the-as (function cspace matrix none) t9-3)
+                (if (the-as (function cspace transformq none) t9-3)
                     ((the-as (function object object object none) t9-3) v1-20 (-> v1-20 param1) (-> v1-20 param2))
                     )
                 )
@@ -420,7 +435,7 @@
                      (t9-4 (-> a0-11 param0))
                      )
                 (if t9-4
-                    (t9-4 a0-11 (the-as matrix a1-7))
+                    (t9-4 a0-11 (the-as transformq a1-7))
                     )
                 )
               )
@@ -430,7 +445,7 @@
                       (a1-9 (+ (* 48 s0-0) 2528 (scratchpad-object int)))
                       )
                   (if (-> a0-12 param0)
-                      ((-> a0-12 param0) a0-12 (the-as matrix a1-9))
+                      ((-> a0-12 param0) a0-12 (the-as transformq a1-9))
                       (cspace<-parented-transformq-joint! a0-12 (the-as transformq a1-9))
                       )
                   )
@@ -453,7 +468,12 @@
           )
         )
       )
-    ; (draw-bone-lines (-> obj process))
+  (#when PC_PORT (when *debug-segment*
+    (if *display-bones*
+      (draw-bone-lines (the-as process-drawable (-> obj process))))
+    (if *display-joint-names*
+      (draw-joint-spheres (the-as process-drawable (-> obj process))))
+    ))
     0
     (none)
     )
@@ -503,7 +523,7 @@
         (dotimes (s0-0 3)
           (set! sv-64 add-debug-vector)
           (set! sv-80 #t)
-          (set! sv-96 318)
+          (set! sv-96 (the-as int (bucket-id debug-no-zbuf1)))
           (set! sv-112 s3-0)
           (let ((a3-0
                   (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (+ (the-as uint s1-0) (* s0-0 16))) 1.0)
@@ -616,7 +636,7 @@
           (when s5-1
             (let ((s4-0 add-debug-text-3d)
                   (s3-0 #t)
-                  (s2-0 318)
+                  (s2-0 (bucket-id debug-no-zbuf1))
                   )
               (format (clear *temp-string*) "~2j~s error for ~s" arg0 (-> self name))
               (s4-0
@@ -624,7 +644,7 @@
                 (the-as bucket-id s2-0)
                 *temp-string*
                 (the-as vector s5-1)
-                (font-color precursor-#ec3b00)
+                (font-color red)
                 (the-as vector2h #f)
                 )
               )
@@ -715,7 +735,7 @@
     (set! (-> s2-0 level-index) (the-as uint (-> s3-0 index)))
     )
   (set! (-> s2-0 dma-add-func) (the-as (function process-drawable draw-control symbol object none) nothing))
-  (set! (-> arg2 0) (the-as cspace-array (setup-cspace-and-add s2-0 (the-as art-joint-geo sv-16) 'process)))
+  (set! (-> arg2 0) (setup-cspace-and-add s2-0 (the-as art-joint-geo sv-16) 'process))
   (set! (-> s2-0 dma-add-func) dma-add-process-drawable)
   (set! (-> s2-0 shadow-mask) (res-lump-value (-> arg0 entity) 'shadow-mask uint :time -1000000000.0))
   (set! (-> s2-0 shadow-values) (res-lump-value (-> arg0 entity) 'shadow-values uint :time -1000000000.0))
@@ -760,8 +780,8 @@
          (let ((s4-0 v0-3))
            (let ((s3-1 (-> s3-0 art-group)))
              (cond
-               ((>= (the-as int (-> arg0 janim)) 0)
-                (when (or (>= (the-as int (-> arg0 janim)) (-> s3-1 length))
+               ((>= (-> arg0 janim) 0)
+                (when (or (>= (-> arg0 janim) (-> s3-1 length))
                           (begin (set! v1-14 (-> s3-1 data (-> arg0 janim))) (not v1-14))
                           (!= (-> v1-14 type) art-joint-anim)
                           )
@@ -1183,8 +1203,6 @@
   0
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod update-anim-data joint-control ((obj joint-control))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((s5-0 (+ (-> obj active-channels) (-> obj float-channels))))
@@ -1197,11 +1215,8 @@
             (let ((s2-0 (-> s3-0 frame-group)))
               (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s2-0 frames flags))
                 (cond
@@ -1226,8 +1241,6 @@
   (none)
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod evaluate-joint-control process-drawable ((obj process-drawable))
   (local-vars (s1-0 joint-control-channel) (s2-0 int) (s4-0 uint) (s7-0 none) (ra-0 int))
   (with-pp
@@ -1267,11 +1280,8 @@
             (let ((s0-0 (-> s1-0 frame-group)))
               (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
-                (break!)
-                ;; (.lw ra-0 return-from-thread s7-0)
-                ;; (.jr ra-0)
-                ;; (nop!)
-                ;; 0
+                (abandon-thread)
+                0
                 )
               (when (nonzero? (-> s0-0 frames flags))
                 (cond
@@ -1778,7 +1788,7 @@
   )
 
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
-  (while (and *target* (logtest? (-> *target* focus-status) (focus-status in-air)))
+  (while (and *target* (focus-test? *target* in-air))
     (suspend)
     )
   (set! (-> self state-time) (-> self clock frame-counter))

@@ -187,10 +187,7 @@
     (send-event! self (-> self event-down))
     (let ((activation-script (res-lump-struct (-> self entity) 'on-activate structure)))
       (if activation-script
-          (eval!
-            (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-            (the-as pair activation-script)
-            )
+          (script-eval (the-as pair activation-script))
           )
       )
     (go-virtual down-idle)
@@ -321,9 +318,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod send-event! basebutton ((obj basebutton) (event-type symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
-       - the `notify-actor`
-       - every [[entity-actor]] in the `actor-group` array
-       @see [[entity-actor]]"
+- the `notify-actor`
+- every [[entity-actor]] in the `actor-group` array
+@see [[entity-actor]]"
   (when event-type
     (let ((event (new 'stack-no-clear 'event-message-block)))
       (set! (-> event from) (process->ppointer self))
@@ -456,6 +453,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! basebutton ((obj basebutton) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
   (local-vars (sv-16 res-tag))
   (reset! obj)
   (set! (-> obj button-id) -1)

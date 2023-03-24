@@ -228,7 +228,16 @@
     :jump-debug-draw #f
     :move-to-ground #t
     :hover-if-no-ground #f
-    :idle-anim-script (new 'static 'array uint32 8 #x5010401 #x1010501 #x5010401 #x1010601 #x0 #x0 #x0 #x0)
+    :idle-anim-script (new 'static 'array idle-control-frame 8
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x5)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x5)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x6 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
     :idle-anim 4
     :notice-anim 7
     :hostile-anim 4
@@ -252,7 +261,72 @@
     :default-hit-points 1
     :gnd-collide-with (collide-spec backgnd)
     :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
-    :penetrate-knocked #xffffffffffffffff
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
     :movement-gravity (meters -100)
     :friction 0.8
     :attack-shove-back (meters 3)
@@ -330,17 +404,17 @@
 (set! (-> *hopper-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 73 of type hopper
-(defmethod enemy-method-73 hopper ((obj hopper))
+(defmethod kill-prefer-falling hopper ((obj hopper))
+  "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cond
     ((-> obj can-go-knocked?)
      (set! (-> obj can-go-knocked?) #f)
      (go (method-of-object obj knocked))
      )
     (else
-      ((method-of-type nav-enemy enemy-method-73) obj)
+      ((method-of-type nav-enemy kill-prefer-falling) obj)
       )
     )
-  (none)
   )
 
 ;; definition for method 90 of type hopper
@@ -352,18 +426,18 @@
        (logior! (-> obj focus-status) (focus-status touch-water under-water))
        )
       (else
-        (when (logtest? (-> obj focus-status) (focus-status touch-water))
+        (when (focus-test? obj touch-water)
           (let ((s3-0 (new 'stack-no-clear 'water-info)))
             (water-info-init! (-> obj root-override2) s3-0 (collide-action solid semi-solid))
             (let ((v1-9 #f))
               (cond
                 ((not (logtest? (water-flags touch-water) (-> s3-0 flags)))
-                 (if (logtest? (-> obj focus-status) (focus-status under-water))
+                 (if (focus-test? obj under-water)
                      (set! v1-9 #t)
                      )
                  (logclear! (-> obj focus-status) (focus-status touch-water under-water))
                  )
-                ((logtest? (-> obj focus-status) (focus-status under-water))
+                ((focus-test? obj under-water)
                  (let ((f0-1 (+ 11264.0 (-> obj root-override2 trans y))))
                    (if (< (-> s3-0 trans y) f0-1)
                        (set! v1-9 #t)
@@ -590,7 +664,7 @@
                              )
                            0
                            (set! (-> s5-0 y) (-> s2-0 y))
-                           (if (enemy-method-126 obj s3-1 s5-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                           (if (enemy-above-ground? obj s3-1 s5-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
                                (set! (-> s5-0 y) (-> s3-1 best-other-tri intersect y))
                                )
                            )
@@ -725,7 +799,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (enemy-method-72 self)
+    (react-to-focus self)
     (none)
     )
   )
@@ -738,10 +812,7 @@
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (eval!
-              (new 'stack 'script-context (the-as basic (process->ppointer self)) self (-> self root-override2 trans))
-              (the-as pair gp-0)
-              )
+            (script-eval (the-as pair gp-0) :vector (-> self root-override2 trans))
             )
         )
       )
@@ -793,7 +864,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (new 'stack 'collide-query)))
         (get-point-in-path! (-> self path-intro) gp-0 1.0 'exact)
-        (if (enemy-method-126 self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+        (if (enemy-above-ground? self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
             (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
             )
         )
@@ -806,7 +877,8 @@
   )
 
 ;; definition for method 132 of type hopper
-(defmethod enemy-method-132 hopper ((obj hopper))
+(defmethod dispose! hopper ((obj hopper))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> obj minimap)
     (logior! (-> obj minimap flags) (minimap-flag fade-out))
     (set! (-> obj minimap) #f)
@@ -829,8 +901,8 @@
 
 ;; definition for method 114 of type hopper
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-114 hopper ((obj hopper))
-  "@abstract"
+(defmethod init-enemy-collision! hopper ((obj hopper))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -895,8 +967,8 @@
 
 ;; definition for method 115 of type hopper
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-115 hopper ((obj hopper))
-  "@abstract"
+(defmethod init-enemy! hopper ((obj hopper))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> obj main-thread) 256)
   (initialize-skeleton
     obj
@@ -904,7 +976,7 @@
     (the-as pair 0)
     )
   (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
-  (enemy-method-113 obj *hopper-nav-enemy-info*)
+  (init-enemy-behaviour-and-stats! obj *hopper-nav-enemy-info*)
   (set! (-> obj can-go-knocked?) #t)
   (let ((v1-9 (-> obj neck)))
     (set! (-> v1-9 up) (the-as uint 1))
@@ -938,9 +1010,7 @@
     (set! (-> v1-39 nav-cull-radius) 61440.0)
     )
   0
-  (set! (-> obj minimap)
-        (minimap-method-12 *minimap* obj (the-as uint 70) (the-as int #f) (the-as vector #t) 0)
-        )
+  (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 70) (the-as int #f) (the-as vector #t) 0))
   0
   (none)
   )

@@ -7,94 +7,91 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup skel-tomb-boss-explode tomb-boss-explode 0 -1
-              ((1 (meters 999999)))
+(defskelgroup skel-tomb-boss-explode tomb-boss-explode tomb-boss-explode-lod0-jg -1
+              ((tomb-boss-explode-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 20)
               :origin-joint-index 4
               )
 
-(defskelgroup skel-tomb-boss-explode-a tomb-boss-explode 3 -1
-              ((4 (meters 999999)))
+(defskelgroup skel-tomb-boss-explode-a tomb-boss-explode tomb-boss-explode-a-lod0-jg -1
+              ((tomb-boss-explode-a-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 20)
               :origin-joint-index 3
               )
 
-(scene-method-16
-  (new 'static 'scene
-    :name "tomb-unlock-start"
-    :extra #f
-    :info #f
-    :mask-to-clear #x1282000
-    :entity "scene-stage-73"
-    :art-group "scenecamera"
-    :anim "tomb-unlock-start"
-    :parts 3
-    :command-list '((120 (task-close! "tomb-boss-torches"))
-      (10000
-        (apply ,(lambda :behavior scene-player
-                  ()
-                  (if (-> self aborted?)
-                      (eval!
-                        (new 'stack 'script-context (the-as basic (process->ppointer self)) self (the-as vector #f))
-                        '(cond
-                           ((task-closed? "tomb-water-resolution")
-                            (send-event "tomb-sphinx-2" 'trigger)
-                            (send-event "tomb-plat-return-2" 'trigger)
-                            )
-                           ((task-closed? "tomb-poles-resolution")
-                            (send-event "tomb-sphinx-1" 'trigger)
-                            (send-event "tomb-plat-return-1" 'trigger)
-                            )
-                           )
-                        )
-                      )
-                  (none)
-                  )
-               )
-        (want-continue "tomb-start-bottom")
-        )
-      )
-    :cut-list '()
-    :wait-ground-time (seconds 1)
-    :draw-target #f
-    :abort #t
-    :actor (new 'static 'boxed-array :type scene-actor
-      (new 'static 'scene-actor
-        :name "scenecamera"
-        :level #f
-        :art-group "skel-scenecamera"
-        :prefix ""
-        :draw-frames '((min max))
-        :scissor-frames '()
-        :camera 4
-        :shadow-flags -1
-        :shadow-volume-joint #f
-        )
-      (new 'static 'scene-actor
-        :name "tomb-boss-door"
-        :level 'tomba
-        :art-group "skel-tomb-boss-door"
-        :prefix ""
-        :draw-frames '((min max))
-        :scissor-frames '()
-        :light-index #x11
-        :flags #x1
-        :shadow-flags -1
-        :shadow-volume-joint #f
-        )
-      )
-    :load-point-obj #f
-    :end-point-obj #f
-    :borrow '()
-    :sfx-volume -1.0
-    :ambient-volume -1.0
-    :music-volume -1.0
-    :blackout-end #t
-    :peaceful #t
-    :music-delay 1500.0
-    :save #t
-    )
-  )
+(scene-method-16 (new 'static 'scene
+                   :name "tomb-unlock-start"
+                   :extra #f
+                   :info #f
+                   :mask-to-clear #x1282000
+                   :entity "scene-stage-73"
+                   :art-group "scenecamera"
+                   :anim "tomb-unlock-start"
+                   :parts 3
+                   :command-list '((120 (task-close! "tomb-boss-torches"))
+                     (10000
+                       (apply ,(lambda :behavior scene-player
+                                 ()
+                                 (if (-> self aborted?)
+                                     (script-eval '(cond
+                                                     ((task-closed? "tomb-water-resolution")
+                                                      (send-event "tomb-sphinx-2" 'trigger)
+                                                      (send-event "tomb-plat-return-2" 'trigger)
+                                                      )
+                                                     ((task-closed? "tomb-poles-resolution")
+                                                      (send-event "tomb-sphinx-1" 'trigger)
+                                                      (send-event "tomb-plat-return-1" 'trigger)
+                                                      )
+                                                     )
+                                                  )
+                                     )
+                                 (none)
+                                 )
+                              )
+                       (want-continue "tomb-start-bottom")
+                       )
+                     )
+                   :cut-list '()
+                   :wait-ground-time (seconds 1)
+                   :draw-target #f
+                   :abort #t
+                   :actor (new 'static 'boxed-array :type scene-actor
+                     (new 'static 'scene-actor
+                       :name "scenecamera"
+                       :level #f
+                       :art-group "skel-scenecamera"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :camera 4
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     (new 'static 'scene-actor
+                       :name "tomb-boss-door"
+                       :level 'tomba
+                       :art-group "skel-tomb-boss-door"
+                       :prefix ""
+                       :draw-frames '((min max))
+                       :scissor-frames '()
+                       :light-index #x11
+                       :flags #x1
+                       :shadow-flags -1
+                       :shadow-volume-joint #f
+                       )
+                     )
+                   :load-point-obj #f
+                   :end-point-obj #f
+                   :borrow '()
+                   :sfx-volume -1.0
+                   :ambient-volume -1.0
+                   :music-volume -1.0
+                   :blackout-end #t
+                   :peaceful #t
+                   :music-delay 1500.0
+                   :save #t
+                   )
+                 )
 
 (scene-method-16
   (new 'static 'scene
@@ -347,10 +344,10 @@
 
 (defbehavior attach-pod-part scene-player ()
   (let ((v1-0 #f)
-        (gp-0 (-> self subtitle-change-time))
+        (sub-change-time (-> self subtitle-change-time))
         )
     (when (>= (- (-> self clock frame-counter) (-> self speed-press-time)) 0)
-      (set! gp-0 (logxor gp-0 2048))
+      (set! sub-change-time (logxor sub-change-time 2048))
       (set! (-> self speed-press-time) (+ (-> self clock frame-counter) (seconds 0.5)))
       (set! v1-0 #t)
       )
@@ -361,8 +358,8 @@
                (v1-7 (the-as number (logior #x3f800000 v1-6)))
                )
           (if (< f30-0 (+ -1.0 (the-as float v1-7)))
-              (set! gp-0 (logior gp-0 (ash 1 s5-0)))
-              (set! gp-0 (logclear gp-0 (ash 1 s5-0)))
+              (set! sub-change-time (logior sub-change-time (ash 1 s5-0)))
+              (set! sub-change-time (logclear sub-change-time (ash 1 s5-0)))
               )
           )
         )
@@ -372,7 +369,7 @@
       (set! v1-0 #t)
       )
     (when v1-0
-      (set! (-> self subtitle-change-time) gp-0)
+      (set! (-> self subtitle-change-time) sub-change-time)
       (remove-from-process *part-engine* self)
       (add-connection *part-engine* self 13 self 3264 (new 'static 'vector :w 819200.0))
       (add-connection *part-engine* self 14 self 3264 (new 'static 'vector :w 819200.0))
@@ -380,38 +377,38 @@
           (add-connection *part-engine* self 5 self 3251 (new 'static 'vector :w 819200.0))
           (add-connection *part-engine* self 6 self 3251 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 1)
+      (if (logtest? sub-change-time 1)
           (add-connection *part-engine* self 8 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 2)
+      (if (logtest? sub-change-time 2)
           (add-connection *part-engine* self 9 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 4)
+      (if (logtest? sub-change-time 4)
           (add-connection *part-engine* self 10 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 8)
+      (if (logtest? sub-change-time 8)
           (add-connection *part-engine* self 11 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 16)
+      (if (logtest? sub-change-time 16)
           (add-connection *part-engine* self 12 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 32)
+      (if (logtest? sub-change-time 32)
           (add-connection *part-engine* self 15 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 64)
+      (if (logtest? sub-change-time 64)
           (add-connection *part-engine* self 16 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 128)
+      (if (logtest? sub-change-time 128)
           (add-connection *part-engine* self 17 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 256)
+      (if (logtest? sub-change-time 256)
           (add-connection *part-engine* self 18 self 3252 (new 'static 'vector :w 819200.0))
           )
-      (if (logtest? gp-0 512)
+      (if (logtest? sub-change-time 512)
           (add-connection *part-engine* self 19 self 3252 (new 'static 'vector :w 819200.0))
           )
       (cond
-        ((logtest? gp-0 4096)
+        ((logtest? sub-change-time 4096)
          (add-connection *part-engine* self 4 self 3258 (new 'static 'vector :y 4096.0 :w 819200.0))
          (add-connection *part-engine* self 4 self 3259 (new 'static 'vector :y 4096.0 :w 819200.0))
          )

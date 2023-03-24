@@ -533,7 +533,7 @@
          (let ((v1-7 (-> arg3 param 0)))
            (cond
              ((= v1-7 'grab)
-              (when (not (logtest? (-> self focus-status) (focus-status dead)))
+              (when (not (focus-test? self dead))
                 (if (not (-> arg3 param 1))
                     #t
                     (go target-mech-grab)
@@ -739,7 +739,7 @@
            )
          )
         (('shove)
-         (when (not (logtest? (-> self focus-status) (focus-status dead hit)))
+         (when (not (focus-test? self dead hit))
            (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 160)
            (when (not (logtest? (-> self attack-info-rec mask) (attack-info-mask attacker)))
              (set! (-> self attack-info-rec attacker) (process->handle arg0))
@@ -823,12 +823,12 @@
                         )
                       'bounce
                       )
-                   (zero? (logand (-> self focus-status) (focus-status dead hit)))
+                   (not (logtest? (-> self focus-status) (focus-status dead hit)))
                    )
           (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
           (target-timed-invulnerable (seconds 0.1) self 1)
           (cond
-            ((logtest? (focus-status carry) (-> self focus-status))
+            ((focus-test? self carry)
              enter-state
              (let ((a0-19 (-> *TARGET-bank* mech-carry-jump-height-min))
                    (a1-8 (-> *TARGET-bank* mech-carry-jump-height-max))
@@ -1114,7 +1114,7 @@
   (target-exit)
   (when (zero? (-> self mech))
     (set! (-> self mech) (new 'process 'mech-info))
-    (set! (-> self mech hud 0) (the-as uint #f))
+    (set! (-> self mech hud 0) (the-as handle #f))
     (set! (-> self mech engine-sound-id) (the-as uint (new-sound-id)))
     (set! (-> self mech thrust-sound-id) (the-as uint (new-sound-id)))
     (set! (-> self mech drag-sound-id) (the-as uint (new-sound-id)))
@@ -1161,7 +1161,7 @@
   (set! (-> self focus-status) (logior (focus-status mech) (-> self focus-status)))
   (set! (-> self control bend-target) 0.0)
   (let ((v1-40 (-> self node-list data)))
-    (set! (-> v1-40 0 param0) (the-as (function cspace matrix none) cspace<-transformq+world-trans!))
+    (set! (-> v1-40 0 param0) (the-as (function cspace transformq none) cspace<-transformq+world-trans!))
     (set! (-> v1-40 0 param1) (the-as basic (-> self control trans)))
     (set! (-> v1-40 0 param2) (the-as basic (-> self control cspace-offset)))
     )
@@ -1171,7 +1171,7 @@
   (let ((s4-1 (-> self entity))
         (s3-0 (-> self level))
         )
-    (process-entity-set! self (the-as entity-actor (-> self mech entity)))
+    (process-entity-set! self (the-as entity (-> self mech entity)))
     (let ((s2-0 (get-process *16k-dead-pool* manipy #x4000)))
       (set! (-> self manipy)
             (the-as
@@ -1300,9 +1300,7 @@
   (set-setting! 'head-offset 'abs #x46900000 0)
   (set-setting! 'mode-sound-bank 'mech 0 0)
   (set-setting! 'sound-flava #f #x41f00000 3)
-  (set! (-> self mech hud 0)
-        (the-as uint (ppointer->handle (process-spawn hud-heatmeter :init hud-init-by-other :to self)))
-        )
+  (set! (-> self mech hud 0) (ppointer->handle (process-spawn hud-heatmeter :init hud-init-by-other :to self)))
   (remove-exit)
   (if arg2
       (go target-mech-stance)
@@ -1362,7 +1360,7 @@
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (let ((v1-39 (-> self node-list data)))
-      (set! (-> v1-39 0 param0) (the-as (function cspace matrix none) cspace<-transformq+trans!))
+      (set! (-> v1-39 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
       (set! (-> v1-39 0 param1) (the-as basic (-> self control trans)))
       (set! (-> v1-39 0 param2) (the-as basic (-> self control cspace-offset)))
       )
@@ -1706,7 +1704,7 @@
           )
         (cond
           ((and (logtest? (-> self control mod-surface flags) (surface-flag air))
-                (zero? (logand (-> self control status) (collide-status on-surface)))
+                (not (logtest? (-> self control status) (collide-status on-surface)))
                 )
            (add-thrust)
            )
@@ -1787,7 +1785,3 @@
   (target-mech-real-post)
   (none)
   )
-
-
-
-
