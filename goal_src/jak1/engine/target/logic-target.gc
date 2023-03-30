@@ -500,15 +500,12 @@
   ;; TODO This keeps the movement angle constant regardless of camera angle for the TAS
   (if (= (-> *pc-tas-input-frame* tas-frame) 0)
     (vector-matrix*! arg0 arg0 (matrix-local->world #t #f))
-    (vector-matrix*! arg0 arg0 (new 'static 'matrix
-      :vector
-      (new 'static 'inline-array vector 4
-        (new 'static 'vector :x 1.0)
-        (new 'static 'vector :y 1.0)
-        (new 'static 'vector :z 1.0)
-        (new 'static 'vector :w 1.0)
-        )
-      ))
+    (vector-matrix*! arg0 arg0 (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+      (new 'static 'vector :x 1.0)
+      (new 'static 'vector :y 1.0)
+      (new 'static 'vector :z 1.0)
+      (new 'static 'vector :w 1.0)
+      )))
     )
   )
 

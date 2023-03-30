@@ -39,7 +39,6 @@ TASInputFrameGOAL tas_read_current_frame() {
 
     return {.tas_frame = tas_input_frame,
             .frame_rate = input.frame_rate,
-            .skip_spool_movies = input.skip_spool_movies,
             // We never record input during playbacks
             .is_recording_input = false,
             .button0 = input.button0,
@@ -52,7 +51,6 @@ TASInputFrameGOAL tas_read_current_frame() {
   // If we're not running a TAS (or just finished it) reset to empty
   return {.tas_frame = 0,
           .frame_rate = 60,
-          .skip_spool_movies = 0,
           .is_recording_input = tas_is_recording_input,
           .button0 = 0,
           .player_angle = 0,
@@ -263,7 +261,6 @@ void tas_add_new_input_if_needed(std::string file_name, u64 file_line) {
                           .file_name = file_name,
                           .file_line = file_line,
                           .frame_rate = tas_inputs[last_index].frame_rate,
-                          .skip_spool_movies = tas_inputs[last_index].skip_spool_movies,
                           .button0 = 0,
                           .player_angle = tas_inputs[last_index].player_angle,
                           .player_speed = tas_inputs[last_index].player_speed,
@@ -312,8 +309,8 @@ void tas_load_inputs(std::string file_name) {
     }
 
     // Handle all of the special commands
-    TASKeyValue pair = tas_read_line_key_value(
-        line, {"import", "frame-rate", "marker", "save-results", "skip-spool-movies"});
+    TASKeyValue pair =
+        tas_read_line_key_value(line, {"import", "frame-rate", "marker", "save-results"});
 
     if (pair.key != "") {
       // Import another tas file, and just read it in like it was originally part of this file
@@ -333,12 +330,6 @@ void tas_load_inputs(std::string file_name) {
         s8 bool_value = tas_get_input_bool(pair.value);
         if (bool_value != -1) {
           save_results = bool_value;
-        }
-      } else if (pair.key == "skip-spool-movies") {
-        tas_add_new_input_if_needed(file_name, file_line);
-        s8 bool_value = tas_get_input_bool(pair.value);
-        if (bool_value != -1) {
-          tas_inputs[tas_inputs.size() - 1].skip_spool_movies = bool_value;
         }
       } else {
         // If we reach here we passed something in the valid commands list but didn't handle
@@ -493,7 +484,6 @@ void tas_handle_pad_inputs(CPadInfo* cpad) {
                           .file_name = tas_main_file_name,
                           .file_line = 1,
                           .frame_rate = 60,
-                          .skip_spool_movies = 0,
                           .button0 = 0,
                           .player_angle = 0,
                           .player_speed = 0,

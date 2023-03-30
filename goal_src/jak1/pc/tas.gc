@@ -7,17 +7,16 @@
 (deftype tas-input-frame (structure)
   ((tas-frame         uint64 :offset-assert  0)
    (frame-rate        uint32 :offset-assert  8)
-   (skip-spool-movies uint32 :offset-assert 12)
-   (is-recording-tas  uint32 :offset-assert 16)
-   (button0           uint32 :offset-assert 20)
-   (player-angle      float  :offset-assert 24)
-   (player-speed      float  :offset-assert 28)
-   (camera-angle      float  :offset-assert 32)
-   (camera-zoom       float  :offset-assert 36)
+   (is-recording-tas  uint32 :offset-assert 12)
+   (button0           uint32 :offset-assert 16)
+   (player-angle      float  :offset-assert 20)
+   (player-speed      float  :offset-assert 24)
+   (camera-angle      float  :offset-assert 28)
+   (camera-zoom       float  :offset-assert 32)
    )
   :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
 
 ;; Also copied into TASInputFrameResultsGOAL in tas_tools.h

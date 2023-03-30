@@ -37,7 +37,6 @@ struct TASInput {
   // Command settings, should be set at the start of this line
   u32 frame_rate;
   std::string marker;
-  u32 skip_spool_movies;
 
   // Inputs for this line
   u32 button0;
@@ -51,7 +50,6 @@ struct TASInput {
 struct TASInputFrameGOAL {
   u64 tas_frame;
   u32 frame_rate;
-  u32 skip_spool_movies;
   u32 is_recording_input;
   u32 button0;
   float player_angle;

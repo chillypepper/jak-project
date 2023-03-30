@@ -83,9 +83,9 @@ You should in theory be able to import as many files as you like (including impo
 
 ## Commands
 
-The next type of lines are lines for configuring your environment. These will run at the point in time they're added, but aren't necessarily frame dependent. The commands that you can use are written below, and I'll include one long example here to show that these can be chained:
+The next type of lines are lines for configuring your environment. These will run at the point in time they're added, but aren't necessarily frame dependent. The commands that you can use are written below, and I'll include one example here to show that these can be chained:
 
-`commands,frame-rate=999,skip-spool-movies=true`
+`commands,frame-rate=999,marker=run-start`
 
 ### frame-rate
 
@@ -104,25 +104,6 @@ Changing these files just requires you to stop the current TAS (with `Triangle`)
 I normally work by adding `commands,frame-rate=999` at the top of my files, and then `commands,frame-rate=10` just before the sections that I'm working on so I can skip through the content and continue while analysing the frames.
 
 I'm hoping to add a frame advance function in the future, but this will need to do until that's ready to go!
-
-NOTE: If you add more than one of these in a line, only the last setting will be used.
-
-### skip-spool-movies
-
-This one is strangely named, but the idea was to separate it from the `cutscenes` terminology as they behave a little separate in the Jak games. That's why you can happily skip Samos telling you to adventure away, but still have to watch every Power Cell pick-up animation while you play.
-
-I've been attempting to work around this, and so far have a partial solution that can be enabled and disabled like so:
-
-```
-commands,skip-spool-movies=true
-commands,skip-spool-movies=false
-```
-
-One example of this in use is in `quit-to-menu` - the frame data I have set up there requires the loading of the logo to be skipped, and so there's a section in there that always turns it on. That's why it's always faster quitting to menu in this TAS script than in OpenGOAL or base Jak and Daxter currently.
-
-This can additional be used to skip powercell cutscenes in the same way - just put `commands,skip-spool-movies=true` at the top of any file after `create-new-game` has run (to make sure nothing reset this) and you should find all these scenes skipped!
-
-PLEASE NOTE!!!: This is currently not working perfectly, and so you won't always be able to skip the cutscenes. All the cell pick-ups should be reliable, but other cutscenes are actually functional - for example, try killing the Lurkers at the top of the Sentinel Beach canon with `skip-spool-movies` enabled and you'll see the Power Cell never spawns. I'm trying to make this setting more comprehensive, but it will still save a good chunk of time in its current state (and runs reliably)
 
 NOTE: If you add more than one of these in a line, only the last setting will be used.
 
@@ -153,10 +134,10 @@ For the moment we're a little lacking on the tooling side, with the above comman
 In the meantime the way that I'm working is by importing all of the files I need in my `main.jaktas` file, with some speed up commands in place to skip through content I've already finished:
 
 ```
-commands,frame-rate=999,skip-spool-movies=true
+commands,frame-rate=999
 import=util/quit-to-menu
 import=util/create-new-game
-commands,frame-rate=999,skip-spool-movies=true
+commands,frame-rate=999
 import=no-lts-geyser-rock
 ```
 

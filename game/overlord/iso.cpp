@@ -86,6 +86,7 @@ s32 gFakeVAGClockPaused = 0;
 s32 gFakeVAGClockRunning = 0;
 s32 gFakeVAGClock = 0;
 s32 gRealVAGClockRunning = 0;
+s32 gRealVAGTASFrameStart = 0;
 s32 gRealVAGClock = 0;
 s32 gRealVAGClockS = 0;
 s32 gPlaying = 0;
@@ -560,6 +561,7 @@ u32 ISOThread() {
           }
           if (thing) {
             if (!in_progress_vag_command || in_progress_vag_command->fd) {
+              gRealVAGTASFrameStart = TAS::tas_read_current_frame().tas_frame;
               gRealVAGClock = 0;
               gRealVAGClockS = 0;
               gRealVAGClockRunning = true;
@@ -1339,14 +1341,6 @@ static void UpdatePlayPos() {
 
   gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate);
   gPlayPos = pos;
-
-  // TODO If we're running a TAS we also speed up these scenes a bit. Not perfect but it works!
-  // NOTE The way we calculate frames is a bit rough, assumes sounds are 30fps and game is 60fps
-  TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
-  if (tas_data.tas_frame != 0) {
-    gRealVAGClock = (4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate)) *
-                    std::max((u32)1, ((tas_data.frame_rate / 2) / 30));
-  }
 }
 
 void* RPC_DGO(unsigned int fno, void* _cmd, int y);
@@ -1518,6 +1512,14 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
 
 s32 GetVAGStreamPos() {
   UpdatePlayPos();
+
+  // TODO Handle the sound frame tracking here, treat it as controlled by the tas frame count too
+  // Currently doesn't actually work with sound, we just speed up animations and let the sound die
+  TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
+  if (tas_data.tas_frame != 0) {
+    return (tas_data.tas_frame - gRealVAGTASFrameStart) * 16;
+  }
+
   if (gFakeVAGClockRunning) {
     return gFakeVAGClock;
   }
