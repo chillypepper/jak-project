@@ -1825,7 +1825,10 @@
            (cond
              ((-> *progress-state* yes-no-choice)
               (sound-play "start-options")
-              (set! (-> *setting-control* default video-mode) (-> *progress-state* video-mode-choice))
+              (if (!= (-> *pc-tas-input-frame* tas-frame) 0)
+                (set! (-> *setting-control* default video-mode) 'ntsc)
+                (set! (-> *setting-control* default video-mode) (-> *progress-state* video-mode-choice))
+                )
               (set! (-> obj video-mode-timeout) (-> *display* real-frame-counter))
               (set! (-> obj next-display-state) (progress-screen pal-now-60hz))
               )
@@ -2808,7 +2811,3 @@
     (none)
     )
   )
-
-
-
-

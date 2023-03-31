@@ -1,0 +1,6 @@
+# Open speedrun menu, assumes we're already in speedrun mode before we begin
+1,L1,R1,X,Start
+# NOTE We wait an extra few frames here in case the HUD is open, as this is just a util
+13
+# Minimum wait for the menu to open, then continue
+25

@@ -1,0 +1,12 @@
+# We assume we're already in speedrun mode before we begin
+import=util/open-speedrun-menu
+
+# Move down to start a new full speedrun
+1,Down
+1,X
+
+# Wait for the portal and move to start a new game again, so we're starting from the same conditions each time
+# NOTE Different starting points take different amounts of time to load into geyser, so we add some buffer
+120
+import=util/open-speedrun-menu
+1,Down

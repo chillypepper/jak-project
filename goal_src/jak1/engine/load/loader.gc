@@ -1009,7 +1009,7 @@
           )
         )
       )
-      (set! spool-part (+ spool-part 1))
+    (set! spool-part (+ spool-part 1))
     )
   (set! spool-part (+ spool-part -1))
   (label cfg-88)

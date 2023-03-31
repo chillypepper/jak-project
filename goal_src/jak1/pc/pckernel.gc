@@ -19,7 +19,11 @@
   (case setting
     (('video-mode)
       (set! (-> *setting-control* current video-mode) #f)
-      (set! (-> *setting-control* default video-mode) value)
+
+      (if (!= (-> *pc-tas-input-frame* tas-frame) 0)
+        (set! (-> *setting-control* default video-mode) 'ntsc)
+        (set! (-> *setting-control* default video-mode) value)
+        )
       )
     (('aspect-ratio)
       (set! (-> *setting-control* default aspect-ratio) value)

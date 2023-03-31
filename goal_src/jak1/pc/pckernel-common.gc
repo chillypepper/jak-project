@@ -102,25 +102,18 @@
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
-
-  (set! (-> obj target-fps) rate)
-
-  (cond
-    ((= (-> *pc-tas-input-frame* tas-frame) 0)
-      (case rate
-        ((50)
-          (set-game-setting! obj 'video-mode 'pal)
-          )
-        ((60)
-          (set-game-setting! obj 'video-mode 'ntsc)
-          )
-        (else
-          (set-game-setting! obj 'video-mode 'custom)
-          )
-        )
+  (case rate
+    ((50)
+      (set! (-> obj target-fps) rate)
+      (set-game-setting! obj 'video-mode 'pal)
+      )
+    ((60)
+      (set! (-> obj target-fps) rate)
+      (set-game-setting! obj 'video-mode 'ntsc)
       )
     (else
-      (set-game-setting! obj 'video-mode 'ntsc)
+      (set! (-> obj target-fps) rate)
+      (set-game-setting! obj 'video-mode 'custom)
       )
     )
 
@@ -147,11 +140,8 @@
   (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
 
-  ;; TODO We only do this when a cutscene isn't playing for TAS runs
-  (if (or (= (-> *pc-tas-input-frame* tas-frame) 0) (not (-> *pc-settings* movie?)))
-    (if (!= (-> obj target-fps) (-> *pc-tas-input-frame* frame-rate))
-      (set-frame-rate! obj (the-as int (-> *pc-tas-input-frame* frame-rate)))
-      )
+  (if (!= (-> obj target-fps) (-> *pc-tas-input-frame* frame-rate))
+    (set-frame-rate! obj (the-as int (-> *pc-tas-input-frame* frame-rate)))
     )
 
   (when (-> obj use-vis?)
