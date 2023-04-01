@@ -6,6 +6,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/sce/iop.h"
+#include "game/tools/tas/tas_tools.h"
 
 using namespace std::chrono;
 
@@ -73,8 +74,16 @@ void IOP_Kernel::DelayThread(u32 usec) {
 
   _currentThread->state = IopThread::State::Wait;
   _currentThread->waitType = IopThread::Wait::Delay;
-  _currentThread->resumeTime =
-      time_point_cast<microseconds>(steady_clock::now()) + microseconds(usec);
+
+  TAS::TASInputFrameGOAL tas_data = TAS::tas_read_current_frame();
+  if (tas_data.tas_frame != 0) {
+    _currentThread->resumeTime =
+        time_point_cast<microseconds>(steady_clock::now()) + microseconds(0);
+  } else {
+    _currentThread->resumeTime =
+        time_point_cast<microseconds>(steady_clock::now()) + microseconds(usec);
+  }
+
   leaveThread();
 }
 

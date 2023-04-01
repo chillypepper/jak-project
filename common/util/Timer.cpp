@@ -48,7 +48,11 @@ void Timer::clock_get_platform_timer(struct timespec* tv) const {
 
 void Timer::start(bool is_tas_timer) {
   _is_tas_timer = is_tas_timer;
-  clock_get_platform_timer(&_startTime);
+  if (is_tas_timer) {
+    _startTime = {tv_sec : 0, tv_nsec : 0};
+  } else {
+    clock_get_platform_timer(&_startTime);
+  }
 }
 
 int64_t Timer::getNs() const {
