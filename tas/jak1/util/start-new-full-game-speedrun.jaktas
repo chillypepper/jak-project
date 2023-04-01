@@ -1,3 +1,11 @@
+# Zoom before we kick off for consistency
+1,Triangle
+20
+1,Triangle
+20
+1,Triangle
+20
+
 # We assume we're already in speedrun mode before we begin
 import=util/open-speedrun-menu
 
@@ -5,8 +13,15 @@ import=util/open-speedrun-menu
 1,Down
 1,X
 
-# Wait for the portal and move to start a new game again, so we're starting from the same conditions each time
-# NOTE Different starting points take different amounts of time to load into geyser, so we add some buffer
-120
+# Wait for the portal and move to start a new game again, and zoom so we're starting from the same conditions each time
+# NOTE Different starting points take different amounts of time to load into geyser, so we add some buffer frames
+240
+1,Triangle
+20
+1,Triangle
+20
+1,Triangle
+20
+
 import=util/open-speedrun-menu
 1,Down

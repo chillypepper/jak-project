@@ -1,0 +1,128 @@
+# NOTE This script assumes you're starting a fresh speedrun, loaded while within geyser rock
+
+# Wait to exit the portal
+108
+
+# First inputs after portal
+6,player-angle=21800,player-speed=1
+1,L1
+60,X
+3,L1
+65,X
+1,L1
+53,X
+1
+
+# Launch up to first ledge
+5,X,player-angle=28500
+28
+23,Square,player-angle=26900
+2,player-angle=19500
+20,L1
+20,X
+23
+20,L1,player-angle=19000
+20,X
+28
+14,Square,player-angle=16000
+
+# Cell animation TODO Not consistent with all frame rates, add buffer
+500,player-speed=0
+
+# After collecting 1st cell
+13,player-angle=17000,player-speed=1
+20,L1
+20,X
+25
+3,player-angle=25000
+20,L1
+20,X
+25
+2,player-angle=29500
+20,L1
+20,X
+21
+
+# Boosted to blue eco down off edge
+9,player-angle=25000,player-speed=0.3
+9,Square,player-angle=34000,player-speed=1
+1,X
+66
+25,Square,player-angle=40000
+17,player-angle=6500
+20,L1,
+20,X
+24
+20,Square,player-angle=-2500
+25,X
+27,Square,X,player-angle=0
+24
+
+# Back on ledge moving towards scout flies
+3,player-angle=4500
+20,L1,
+20,X
+29
+10,Square
+10,X
+27
+6,player-angle=-900
+20,L1,
+20,X
+26,player-angle=-19000
+42,Square
+1,player-angle=-32000
+28,Square
+7,player-angle=-15000
+20,L1,
+20,X
+110,player-speed=0
+19,Circle,player-speed=0.4,player-angle=15000
+
+# Cell animation TODO Not consistent with all frame rates, add buffer
+460,player-speed=0
+
+# After collecting 2nd cell
+6,player-angle=25500,player-speed=1
+20,L1,
+20,X
+31,player-angle=-26500
+20,L1
+20,X
+28,player-angle=-28000
+20,L1
+20,X
+20,player-angle=31600
+
+# Punch off the grass ledge
+19,Square
+20,L1
+20,X
+28,player-angle=29900
+19,Square
+20,L1
+20,X
+18
+30,X,player-angle=-21000
+10
+10,Circle
+
+# Roll off the rock
+16,player-angle=-26000
+20,L1
+20,X
+25,player-angle=-14500
+20,L1
+20,X
+23,player-angle=-16000
+20,L1
+20,X
+
+# # Boosted towards blue eco vent
+# # frame-rate=30
+# 43,player-speed=0.5
+# 9,Square,player-angle=-17500,player-speed=1
+# 1,X
+# 14
+# 1,Circle
+# 60

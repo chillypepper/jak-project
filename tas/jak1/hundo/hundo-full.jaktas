@@ -1,0 +1,4 @@
+# NOTE This script assumes you're in the speedrun menu within geyser rock and hovering over "new full game run"
+1,X
+
+import=hundo/geyser-rock
