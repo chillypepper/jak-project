@@ -115,14 +115,63 @@
 20,L1
 20,X
 23,player-angle=-16000
-20,L1
-20,X
+1,L1
+61,X
 
-# # Boosted towards blue eco vent
-# # frame-rate=30
-# 43,player-speed=0.5
-# 9,Square,player-angle=-17500,player-speed=1
-# 1,X
-# 14
-# 1,Circle
-# 60
+# Boosted across gap towards blue eco vent
+19,player-speed=0.3
+9,Square,player-angle=-17500,player-speed=1
+1,X
+14
+1,Circle
+65
+
+# Boosted beside bridge towards blue eco vent
+18,player-speed=0.3,player-angle=-25000
+9,Square,player-angle=-18500,player-speed=1
+1,X
+14
+1,Circle
+66
+10,player-angle=-14000
+1,Circle
+37,player-angle=17500
+
+# Boosted back to door after filling up at blue eco vent
+17,player-speed=0.3,player-angle=13500
+9,Square,player-speed=1
+1,X
+14
+1,Circle
+70,player-angle=10000
+1,L1
+66,X
+3,player-angle=2800
+1,L1
+76,X
+2,Square,player-angle=0
+
+# Cell animation TODO Not consistent with all frame rates, add buffer
+480,player-speed=0
+
+# Drop to orbs around floating platforms
+24,player-speed=1,player-angle=3500
+10,player-speed=0.3
+14,Square,player-speed=1
+frame-rate=20
+1,X
+58,player-angle=-16000
+1,L1,
+64,X
+1,player-angle=-10500
+
+# Jump up first pillar before the bridges
+30,X
+16,X,Circle,player-angle=-3000
+10
+20,X
+16
+30,X,player-angle=-24000
+10
+1,L1,
+100,X
