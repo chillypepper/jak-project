@@ -39,12 +39,11 @@
 20,X
 25
 2,player-angle=29500
-20,L1
-20,X
-21
+1,L1
+60,X
 
 # Boosted to blue eco down off edge
-9,player-angle=25000,player-speed=0.3
+10,player-angle=25000,player-speed=0.3
 9,Square,player-angle=34000,player-speed=1
 1,X
 66
@@ -88,64 +87,60 @@
 20,X
 31,player-angle=-26500
 20,L1
-20,X
-28,player-angle=-28000
-20,L1
-20,X
-20,player-angle=31600
+48,X,player-angle=-26500
+1,L1
+60,X,player-angle=31000
 
 # Punch off the grass ledge
-19,Square
-20,L1
-20,X
-28,player-angle=29900
-19,Square
-20,L1
-20,X
-18
-30,X,player-angle=-21000
-10
-10,Circle
+21,Square,player-angle=32000
+1,L1
+66,X,player-angle=29200
+21,Square,player-angle=31200
+1,L1
+56,X
+1
+30,X,player-angle=-23000
+25,Circle
 
 # Roll off the rock
-16,player-angle=-26000
+6,player-angle=-26000
 20,L1
-20,X
-25,player-angle=-14500
+45,X,player-angle=-12800
+1
 20,L1
 20,X
 23,player-angle=-16000
 1,L1
-61,X
+63,X
 
 # Boosted across gap towards blue eco vent
 19,player-speed=0.3
 9,Square,player-angle=-17500,player-speed=1
 1,X
-14
+12
 1,Circle
-65
+63
 
 # Boosted beside bridge towards blue eco vent
-18,player-speed=0.3,player-angle=-25000
+14,player-speed=0.3,player-angle=-25000
 9,Square,player-angle=-18500,player-speed=1
 1,X
 14
 1,Circle
 66
-10,player-angle=-14000
+9,player-angle=-14000
 1,Circle
-37,player-angle=17500
+39,player-angle=17800
 
 # Boosted back to door after filling up at blue eco vent
-17,player-speed=0.3,player-angle=13500
+16,player-speed=0.3,player-angle=13100
 9,Square,player-speed=1
 1,X
 14
 1,Circle
 70,player-angle=10000
 1,L1
-66,X
+68,X
 3,player-angle=2800
 1,L1
 76,X
@@ -155,23 +150,30 @@
 480,player-speed=0
 
 # Drop to orbs around floating platforms
-24,player-speed=1,player-angle=3500
-10,player-speed=0.3
-14,Square,player-speed=1
-frame-rate=20
+24,player-speed=1,player-angle=4000
+9,player-speed=0.3,player-angle=2250
+15,Square,player-speed=1
 1,X
-58,player-angle=-16000
+50,player-angle=30200
+22,player-angle=-16600
 1,L1,
 64,X
-1,player-angle=-10500
+1,player-angle=-4000
 
 # Jump up first pillar before the bridges
 30,X
-16,X,Circle,player-angle=-3000
-10
-20,X
-16
-30,X,player-angle=-24000
-10
-1,L1,
-100,X
+16,X,Circle
+frame-rate=24
+10,player-angle=-3500
+16,X
+24
+28,X,player-speed=0.3
+40,player-angle=-18000,player-speed=1
+
+# Boosted beside first bridge
+20,player-speed=0.3,player-angle=-20000
+9,Square,player-speed=1
+1,X
+14
+1,Circle
+70,player-angle=-18000
